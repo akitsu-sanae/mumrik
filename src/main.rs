@@ -21,9 +21,7 @@ fn eval_expression (e: syntax::Expression, env: Environment) ->i64 {
         syntax::Expression::Mult(l, r) => eval_expression (*l, env.clone()) * eval_expression (*r, env.clone()),
         syntax::Expression::Div(l, r) => eval_expression (*l, env.clone()) / eval_expression (*r, env.clone()),
         syntax::Expression::Identifier(name) => env[&name],
-        syntax::Expression::Let(name, t, e, body) =>
-            env.insert(name, eval_expression(*e, env.clone())),
-            eval_expression(body, env)
+        syntax::Expression::Let(_, _, e, body) => eval_expression(*body, env)
     }
 }
 
