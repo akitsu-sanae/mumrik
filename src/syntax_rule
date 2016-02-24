@@ -1,0 +1,81 @@
+
+use super::Expression;
+use super::Type;
+use super::Function;
+use super::Variable;
+use super::Class;
+use super::Program;
+
+#[pub]
+program -> Program
+    = space cs : class* { Program { classes : cs } }
+
+#[pub]
+class -> Class
+    = space "class" space name:identifier space "{" space fs:function* vs:variable* space "}" space {
+        Class {name : name, functions: fs, variables:vs }
+    }
+
+#[pub]
+variable -> Variable
+    = "let" space name:identifier space ":" space t:type_ space "=" space e:expr space {
+        Variable{name: name, expr: e, type_ : t}
+    }
+
+#[pub]
+function -> Function
+    = "func" space name:identifier space ":" space  t:type_ space "=" space e:expr { Function{ name: name, expr: e, type_ : t } }
+
+#[pub]
+type_ -> Type
+    = t : variant_type { t }
+    / "[" t : type_ "]" { Type::List(Box::new(t)) }
+
+variant_type -> Type
+    = l:tuple_type space "+" space r:variant_type space { Type::Variant(Box::new(l), Box::new(r)) }
+    / t : tuple_type { t }
+
+tuple_type -> Type
+    = l:function_type space "*" space r:tuple_type space { Type::Tuple(Box::new(l), Box::new(r)) }
+    / t : function_type { t }
+
+function_type -> Type
+    = l:atomic_type space "->" space r:function_type { Type::Function(Box::new(l), Box::new(r)) }
+    / t : atomic_type { t }
+
+atomic_type -> Type
+    = id : identifier { Type::Atomic(id) }
+    / "(" t : type_ ")" { t }
+
+#[pub]
+expr -> Expression
+    = e : let_expr { e }
+    / e : add_expr { e }
+
+space = [ \n\t]*
+
+atomic_expr -> Expression
+    = n : num_literal { n }
+    / id : identifier { Expression::Identifier(id) }
+    / "(" space e:expr space ")"  space { e }
+
+mult_expr -> Expression
+    = l:atomic_expr space "*" space r:mult_expr space { Expression::Mult(Box::new(l), Box::new(r)) }
+    / e:atomic_expr { e }
+
+add_expr -> Expression
+    = l:mult_expr space "+" space r:add_expr space { Expression::Add(Box::new(l), Box::new(r)) }
+    / e:mult_expr { e }
+
+let_expr -> Expression
+    = space "let" space name:identifier space ":" space t: type_ space "=" space e:expr space body:expr {
+        Expression::Let(name, t, Box::new(e), Box::new(body))
+    }
+
+identifier -> String
+    = [a-zA-Z_][a-zA-Z0-9_]* { match_str.to_string() }
+
+num_literal -> Expression
+    = [0-9]+ { Expression::Number(match_str.parse().unwrap()) }
+
+
