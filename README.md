@@ -1,0 +1,2 @@
+# mumrik
+a programing language
