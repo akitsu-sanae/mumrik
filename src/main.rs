@@ -1,34 +1,90 @@
 #![feature(plugin)]
 #![plugin(peg_syntax_ext)]
 
-mod syntax;
+#![feature(box_syntax)]
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Expression {
+    NumberLiteral(i32),
+    Identifier(String),
+    Lambda(String, Box<Expression>),
+    Range(Box<Expression>, Box<Expression>),
 
-use std::collections::HashMap;
-
-type Environment = HashMap<String, i64>;
-
-enum RunResult {
-    Success,
-    TypeError
+    Sequence(Box<Expression>, Box<Expression>),
+    Let(String, Box<Expression>),
+    Add(Box<Expression>, Box<Expression>),
+    Mult(Box<Expression>, Box<Expression>),
+    Apply(Box<Expression>, Box<Expression>),
 }
 
-fn eval_expression (e: syntax::Expression, env: Environment) ->i64 {
-    match e {
-        syntax::Expression::Number(n) => n,
-        syntax::Expression::Add(l ,r) => eval_expression (*l, env.clone()) + eval_expression (*r, env.clone()),
-        syntax::Expression::Sub(l, r) => eval_expression (*l, env.clone()) - (eval_expression (*r, env.clone())),
-        syntax::Expression::Mult(l, r) => eval_expression (*l, env.clone()) * eval_expression (*r, env.clone()),
-        syntax::Expression::Div(l, r) => eval_expression (*l, env.clone()) / eval_expression (*r, env.clone()),
-        syntax::Expression::Identifier(name) => env[&name],
-        syntax::Expression::Let(_, _, e, body) => eval_expression(*body, env)
-    }
-}
+use syntax::*;
+peg_file! syntax("syntax_rule");
 
 fn main() {
-    let env = Environment::new();
-    println!("{}", eval_expression(
-            syntax::parse_expr("let a : int = 12 let b : int = 23 a * b"),
-            env
-            ));
+    assert_eq!(expression("42"), Ok(Expression::NumberLiteral(42)));
+    assert_eq!(expression("42+12"), Ok(Expression::Add(
+                box Expression::NumberLiteral(42),
+                box Expression::NumberLiteral(12)
+                )));
+    assert_eq!(expression("42+12*3"), Ok(Expression::Add(
+                box Expression::NumberLiteral(42),
+                box Expression::Mult(
+                    box Expression::NumberLiteral(12),
+                    box Expression::NumberLiteral(3)
+                    )
+                )));
+    assert_eq!(expression("42; 42+12*3"), Ok(Expression::Sequence(
+                box Expression::NumberLiteral(42),
+                box Expression::Add(
+                    box Expression::NumberLiteral(42),
+                    box Expression::Mult(
+                        box Expression::NumberLiteral(12),
+                        box Expression::NumberLiteral(3)
+                        )
+                    )
+                )));
+    assert_eq!(expression("let x = 12+42; 42+12*3"), Ok(
+            Expression::Sequence(
+                box Expression::Let("x".to_string(),
+                    box Expression::Add(
+                        box Expression::NumberLiteral(12),
+                        box Expression::NumberLiteral(42)
+                        )),
+                box Expression::Add(
+                    box Expression::NumberLiteral(42),
+                    box Expression::Mult(
+                        box Expression::NumberLiteral(12),
+                        box Expression::NumberLiteral(3)
+                        )
+                    )
+                )));
+
+    assert_eq!(expression("fizzbuzz@12*23"), Ok(
+            Expression::Mult(
+                box Expression::Apply(
+                    box Expression::Identifier("fizzbuzz".to_string()),
+                    box Expression::NumberLiteral(12)
+                    ),
+                box Expression::NumberLiteral(23),
+                )));
+
+
+    assert_eq!(statement("let x = 12+42; 42+12*3;;"), Ok(
+            Expression::Sequence(
+                box Expression::Let("x".to_string(),
+                    box Expression::Add(
+                        box Expression::NumberLiteral(12),
+                        box Expression::NumberLiteral(42)
+                        )),
+                box Expression::Add(
+                    box Expression::NumberLiteral(42),
+                    box Expression::Mult(
+                        box Expression::NumberLiteral(12),
+                        box Expression::NumberLiteral(3)
+                        )
+                    )
+                )));
+
+
+
 }
