@@ -3,6 +3,14 @@
 
 #![feature(box_syntax)]
 
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Function {
+    name: String,
+    arg_name: String,
+    body: Box<Expression>,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Expression {
     NumberLiteral(i32),
@@ -68,23 +76,44 @@ fn main() {
                 box Expression::NumberLiteral(23),
                 )));
 
-
-    assert_eq!(statement("let x = 12+42; 42+12*3;;"), Ok(
-            Expression::Sequence(
-                box Expression::Let("x".to_string(),
-                    box Expression::Add(
-                        box Expression::NumberLiteral(12),
-                        box Expression::NumberLiteral(42)
-                        )),
-                box Expression::Add(
-                    box Expression::NumberLiteral(42),
-                    box Expression::Mult(
-                        box Expression::NumberLiteral(12),
-                        box Expression::NumberLiteral(3)
-                        )
-                    )
+    assert_eq!(expression("fizzbuzz@12*23"), Ok(
+            Expression::Mult(
+                box Expression::Apply(
+                    box Expression::Identifier("fizzbuzz".to_string()),
+                    box Expression::NumberLiteral(12)
+                    ),
+                box Expression::NumberLiteral(23),
                 )));
 
 
 
 }
+
+#[test]
+fn function_test() {
+    assert_eq!(function("func main arg { 0 }"), Ok(
+        Function{
+            name: "main".to_string(),
+            arg_name: "arg".to_string(),
+            body: box Expression::NumberLiteral(0)
+        }));
+    assert_eq!(function("func main arg { std.io.println@123 }"), Ok(
+        Function{
+            name: "main".to_string(),
+            arg_name: "arg".to_string(),
+            body: box Expression::Apply(
+                box Expression::Dot(
+                    box Expression::Identifier("std".to_string()),
+                    box Expression::Dot(
+                        box Expression::Identifier("io".to_string()),
+                        box Expression::Identifier("println".to_string())
+                        )
+                    ),
+                box Expression::NumberLiteral(123)
+                )
+        }));
+}
+
+fn main() {
+}
+

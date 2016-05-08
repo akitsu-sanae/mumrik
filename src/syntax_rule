@@ -1,5 +1,6 @@
 
 use super::Expression;
+use super::Function;
 
 space = [ \n\t]*
 
@@ -7,8 +8,10 @@ identifier -> String
     = [a-zA-Z_!?][a-zA-Z0-9_!?]* { match_str.to_string() }
 
 #[export]
-statement -> Expression
-    = e: expression space ";;" { e }
+function -> Function
+    = "func" space name: identifier space arg_name: identifier space "{" space e: expression space "}" space {
+        Function{name: name, arg_name: arg_name, body: box e}
+    }
 
 #[export]
 expression -> Expression
