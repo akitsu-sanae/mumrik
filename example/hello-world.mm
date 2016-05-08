@@ -1,3 +1,9 @@
 
-let main = println 42; unit
+
+func main arg {
+    std.io.println@"hello, world!";
+    0
+}
+
+
 
