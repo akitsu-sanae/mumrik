@@ -23,12 +23,14 @@ pub enum Expression {
     Add(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
     Apply(Box<Expression>, Box<Expression>),
+    Dot(Box<Expression>, Box<Expression>),
 }
 
 use syntax::*;
 peg_file! syntax("syntax_rule");
 
-fn main() {
+#[test]
+fn expression_test() {
     assert_eq!(expression("42"), Ok(Expression::NumberLiteral(42)));
     assert_eq!(expression("42+12"), Ok(Expression::Add(
                 box Expression::NumberLiteral(42),

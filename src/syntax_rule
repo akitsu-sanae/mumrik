@@ -42,8 +42,14 @@ mult_expression -> Expression
     / e: apply_expression { e }
 
 apply_expression -> Expression
-    = l:atomic_expression space "@" space r:apply_expression space {
+    = l:dot_expression space "@" space r:apply_expression space {
         Expression::Apply(box l, box r)
+    }
+    / e: dot_expression { e }
+
+dot_expression -> Expression
+    = l:atomic_expression space "." space r:dot_expression space {
+        Expression::Dot(box l, box r)
     }
     / e: atomic_expression { e }
 
@@ -51,6 +57,7 @@ atomic_expression -> Expression
     = e: number_literal { e }
     / e: identifier_expression { e }
     / e: lambda_expression { e }
+    / "(" space e: expression space ")" space { e }
 
 number_literal -> Expression
     = [0-9]+ {
