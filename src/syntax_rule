@@ -1,6 +1,7 @@
 
 use super::Expression;
 use super::Function;
+use super::Type;
 
 space = [ \n\t]*
 
@@ -9,8 +10,8 @@ identifier -> String
 
 #[export]
 function -> Function
-    = "func" space name: identifier space arg_name: identifier space "{" space e: expression space "}" space {
-        Function{name: name, arg_name: arg_name, body: box e}
+    = "func" space name: identifier space arg_name: identifier space ":" space t: type_ space "{" space e: expression space "}" space {
+        Function{name: name, arg_name: arg_name, arg_type: box t, body: box e}
     }
 
 #[export]
@@ -24,8 +25,8 @@ sequence_expression -> Expression
     / e: let_expression { e }
 
 let_expression -> Expression
-    = "let" space id: identifier space "=" space e: let_expression space {
-        Expression::Let(id, box e)
+    = "let" space id: identifier space ":" t: type_ space "=" space e: let_expression space {
+        Expression::Let(id, box t, box e)
     }
     / e: add_expression { e }
 
@@ -70,12 +71,33 @@ identifier_expression -> Expression
     }
 
 lambda_expression -> Expression
-    = "|" space id:identifier space "|" space "{" space e:expression space "}" space {
-        Expression::Lambda(id, box e)
+    = "|" space id:identifier space ":" t: type_ space "|" space "{" space e:expression space "}" space {
+        Expression::Lambda(id, box t, box e)
     }
 
 range_expression -> Expression
     = "{" space f:expression space "..." space l:expression space "}" space {
         Expression::Range(box f, box l)
     }
+
+
+#[export]
+type_ -> Type
+    = t: union_type { t }
+
+union_type -> Type
+    = l: tuple_type space "+" space r: union_type space {
+        Type::Union(box l, box r)
+    }
+    / t: tuple_type { t }
+
+tuple_type -> Type
+    = l: primary_type space "*" r: tuple_type space {
+        Type::Tuple(box l, box r)
+    }
+    / t: primary_type { t }
+
+primary_type -> Type
+    = id: identifier space { Type::Primary(id) }
+
 
