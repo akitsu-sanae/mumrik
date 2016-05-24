@@ -16,12 +16,17 @@ Mumrikは以下の特徴を持つ言語を目指しています。
 FizzBuzz
 
 ```
-func main args : std.vec<string>  -> int =
-    {1 ... 20}.each |i| ->
-        std.io.print if x % 15 == 0 then "FizzBuzz"
-        else if i % 3 == 0 then "Fizz"
-        else if i % 5 == 0 then "Buzz"
-        else i.to_string()
+func main args: List[String] {
+    {1 ... 20}.each@|i: Int| {
+        std.io.println@ (
+            if i%15 == 0 then "Fizzbuzz"
+            else if i%3 == 0 then "Fizz"
+            else if i%5 == 0 then "Buzz"
+            else i.to_string@unit
+        );
+        unit
+    };
     0
+}
 ```
 

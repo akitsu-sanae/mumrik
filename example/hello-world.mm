@@ -1,7 +1,7 @@
 
 
-func main arg {
-    std.io.println@"hello, world!";
+func main args: List[String] {
+    std.io.println@ "hello, world!";
     0
 }
 
