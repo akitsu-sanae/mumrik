@@ -10,13 +10,13 @@ identifier -> String
 
 #[export]
 function -> Function
-    = "func" space name: identifier space arg_name: identifier space ":" space t: type_ space "{" space e: expression space "}" space {
+    = space "func" space name: identifier space arg_name: identifier space ":" space t: type_ space "{" space e: expression space "}" space {
         Function{name: name, arg_name: arg_name, arg_type: box t, body: box e}
     }
 
 #[export]
 expression -> Expression
-    = e: sequence_expression { e }
+    = space e: sequence_expression { e }
 
 sequence_expression -> Expression
     = l:let_expression space ";" space r:sequence_expression space {
@@ -95,12 +95,14 @@ union_type -> Type
     / t: tuple_type { t }
 
 tuple_type -> Type
-    = l: primary_type space "*" r: tuple_type space {
+    = l: primary_type space "*" space r: tuple_type space {
         Type::Tuple(box l, box r)
     }
     / t: primary_type { t }
 
 primary_type -> Type
-    = id: identifier space { Type::Primary(id) }
+    = id: identifier space "[" space t: type_ "]" space { Type::Dependent(id, box t) }
+    / "(" space t: type_ ")" space { t }
+    / id: identifier space { Type::Primary(id) }
 
 
