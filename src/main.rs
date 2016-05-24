@@ -22,6 +22,7 @@ pub enum Expression {
     Sequence(Box<Expression>, Box<Expression>),
     Let(String, Box<Type>, Box<Expression>),
     Add(Box<Expression>, Box<Expression>),
+    Sub(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
     Apply(Box<Expression>, Box<Expression>),
     Dot(Box<Expression>, Box<Expression>),

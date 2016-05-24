@@ -25,14 +25,17 @@ sequence_expression -> Expression
     / e: let_expression { e }
 
 let_expression -> Expression
-    = "let" space id: identifier space ":" t: type_ space "=" space e: let_expression space {
+    = "let" space id: identifier space ":" space t: type_ space "=" space e: let_expression space {
         Expression::Let(id, box t, box e)
     }
     / e: add_expression { e }
 
 add_expression -> Expression
-    = l:mult_expression space "+" r:add_expression space {
+    = l:mult_expression space "+" space r:add_expression space {
         Expression::Add(box l, box r)
+    }
+    / l:mult_expression space "-" space r:add_expression space {
+        Expression::Sub(box l, box r)
     }
     / e: mult_expression { e }
 
@@ -61,7 +64,7 @@ atomic_expression -> Expression
     / "(" space e: expression space ")" space { e }
 
 number_literal -> Expression
-    = [0-9]+ {
+    = ("-"?)[0-9]+ {
         Expression::NumberLiteral(match_str.parse().unwrap())
     }
 
@@ -71,7 +74,7 @@ identifier_expression -> Expression
     }
 
 lambda_expression -> Expression
-    = "|" space id:identifier space ":" t: type_ space "|" space "{" space e:expression space "}" space {
+    = "|" space id:identifier space ":" space t: type_ space "|" space "{" space e:expression space "}" space {
         Expression::Lambda(id, box t, box e)
     }
 
