@@ -10,8 +10,13 @@ identifier -> String
 
 #[export]
 function -> Function
-    = space "func" space name: identifier space arg_name: identifier space ":" space t: type_ space "{" space e: expression space "}" space {
-        Function{name: name, arg_name: arg_name, arg_type: box t, body: box e}
+    = space "func" space name: identifier space "(" space arg_name: identifier space ":" space t: type_ space ")" space "->" space r_t: type_ "{" space e: expression space "}" space {
+        Function{
+            name: name,
+            arg_name: arg_name, arg_type: box t,
+            return_type: box r_t,
+            body: box e
+        }
     }
 
 #[export]

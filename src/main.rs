@@ -9,6 +9,7 @@ pub struct Function {
     name: String,
     arg_name: String,
     arg_type: Box<Type>,
+    return_type: Box<Type>,
     body: Box<Expression>,
 }
 
@@ -121,23 +122,25 @@ fn expression_test() {
 
 #[test]
 fn function_test() {
-    assert_eq!(function("func main args: List[String] { 0 }"), Ok(
+    assert_eq!(function("func main (args: List[String]) -> Int { 0 }"), Ok(
         Function{
             name: "main".to_string(),
             arg_name: "args".to_string(),
             arg_type: box Type::Dependent(
                 "List".to_string(),
                 box Type::Primary("String".to_string())),
+            return_type: box Type::Primary("Int".to_string()),
             body: box Expression::NumberLiteral(0)
         }));
     assert_eq!(function("
-                        func fib n: Int {
+                        func fib (n: Int) -> Int {
                             fib@(n-1) + fib@(n-2)
                         }"), Ok(
         Function{
             name: "fib".to_string(),
             arg_name: "n".to_string(),
             arg_type: box Type::Primary("Int".to_string()),
+            return_type: box Type::Primary("Int".to_string()),
             body: box Expression::Add(
                 box Expression::Apply(
                     box Expression::Identifier("fib".to_string()),
@@ -156,13 +159,14 @@ fn function_test() {
                 )
         }));
     assert_eq!(function("
-                        func main args: List[String * Int] {
+                        func main (args: List[String * Int]) -> Int {
                             std.io.println@123
                         }"), Ok(
         Function{
             name: "main".to_string(),
             arg_name: "args".to_string(),
             arg_type: box Type::Dependent("List".to_string(), box Type::Tuple(box Type::Primary("String".to_string()), box Type::Primary("Int".to_string()))),
+            return_type: box Type::Primary("Int".to_string()),
             body: box Expression::Apply(
                 box Expression::Dot(
                     box Expression::Identifier("std".to_string()),
