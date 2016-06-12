@@ -1,7 +1,7 @@
 
-use super::Expression;
-use super::Function;
-use super::Type;
+use super::ast::Expression;
+use super::ast::Function;
+use super::ast::Type;
 
 space = [ \n\t]*
 
