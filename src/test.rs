@@ -5,8 +5,6 @@
   file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
 ============================================================================*/
 
-use ast::*;
-use syntax::*;
 
 #[test]
 fn expression_test() {
