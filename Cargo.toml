@@ -3,6 +3,7 @@ name = "mumrik"
 version = "0.1.0"
 authors = ["akitsu <akitsu.sanae@gmail.com>"]
 
-[dependencies]
-peg = "*"
+[dependencies.nom]
+version = "^1.2.3"
+features = ["regexp_macros"]
 
