@@ -7,7 +7,6 @@ pub enum Expression {
     Mult(Box<Expression>, Box<Expression>),
     Div(Box<Expression>, Box<Expression>),
     Var(String),
-    Lambda(String, Box<Expression>),
-    Apply(Box<Expression>, Box<Expression>),
+    Let(String, Box<Expression>, Box<Expression>),
 }
 
