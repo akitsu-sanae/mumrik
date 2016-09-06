@@ -23,18 +23,18 @@ fn main() {
     println!("{:?}", parser::expression(b"hoge+1"));
     println!("{:?}", parser::expression(b"let a = 1+2; 12"));
     println!("{:?}", parser::expression(b"let a = 1+2; let b = 2+5; a*b"));
-    println!("{}", eval::eval(parser::expression(b"123"), &vec![]));
-    println!("{}", eval::eval(parser::expression(b"123+1"), &vec![]));
-    println!("{}", eval::eval(parser::expression(b"123*2"), &vec![]));
-    println!("{}", eval::eval(parser::expression(b"let a = 1+2; 12"), &vec![]));
-    println!("{}", eval::eval(parser::expression(b"let b = 4*3; b+5"), &vec![]));
-    println!("{}", eval::eval(parser::expression(b"let a = 4*3; let b = 3; a+b"), &vec![]));
+    println!("{:?}", eval::eval(parser::expression(b"123"), &vec![]));
+    println!("{:?}", eval::eval(parser::expression(b"123+1"), &vec![]));
+    println!("{:?}", eval::eval(parser::expression(b"123*2"), &vec![]));
+    println!("{:?}", eval::eval(parser::expression(b"let a = 1+2; 12"), &vec![]));
+    println!("{:?}", eval::eval(parser::expression(b"let b = 4*3; b+5"), &vec![]));
+    println!("{:?}", eval::eval(parser::expression(b"let a = 4*3; let b = 3; a+b"), &vec![]));
     loop {
         let mut line = String::new();
         io::stdin().read_line(&mut line).unwrap();
         let expr = expression(line.as_bytes());
         println!("{:?}", expr);
-        println!("{}", eval::eval(expr, &vec![]));
+        println!("{:?}", eval::eval(expr, &vec![]));
     }
 }
 

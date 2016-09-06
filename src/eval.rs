@@ -3,15 +3,27 @@ use ast::Expression;
 
 type Env = Vec<(String, Box<Expression>)>;
 
-pub fn eval(expr: Expression, env: &Env) -> i64 {
+pub fn eval(expr: Expression, env: &Env) -> Expression {
     match expr {
-        Expression::Number(num) => num,
-        Expression::Add(box e1, box e2) => eval(e1, env) + eval(e2, env),
-        Expression::Sub(box e1, box e2) => eval(e1, env) - eval(e2, env),
-        Expression::Mult(box e1, box e2) => eval(e1, env) * eval(e2, env),
-        Expression::Div(box e1, box e2) => eval(e1, env) / eval(e2, env),
+        Expression::Number(num) => Expression::Number(num),
+        Expression::Add(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
+            (Expression::Number(a), Expression::Number(b)) => Expression::Number(a+b),
+            _ => panic!("add non number expression"),
+        },
+        Expression::Sub(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
+            (Expression::Number(a), Expression::Number(b)) => Expression::Number(a-b),
+            _ => panic!("add non number expression"),
+        },
+        Expression::Mult(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
+            (Expression::Number(a), Expression::Number(b)) => Expression::Number(a*b),
+            _ => panic!("add non number expression"),
+        },
+        Expression::Div(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
+            (Expression::Number(a), Expression::Number(b)) => Expression::Number(a/b),
+            _ => panic!("add non number expression"),
+        },
         Expression::Apply(box e1, box e2) => {
-            let arg = Expression::Number(eval(e2, env));
+            let arg = eval(e2, env);
             match e1 {
                 Expression::Closure(name, body) => {
                     let mut new_env = env.clone();
@@ -34,12 +46,9 @@ pub fn eval(expr: Expression, env: &Env) -> i64 {
         },
         Expression::Let(name, box init, box e) => {
             let mut new_env = env.clone();
-            new_env.push((name, box Expression::Number(eval(init, env))));
+            new_env.push((name, box eval(init, env)));
             eval(e, &new_env)
         },
-        Expression::Closure(_, _) => {
-            println!("not implemented: eval closure {:?}", expr);
-            42
-        }
+        Expression::Closure(name, box body) => Expression::Closure(name, box body),
     }
 }
