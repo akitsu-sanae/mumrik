@@ -17,6 +17,10 @@ mod test;
 use parser::expression;
 
 fn main() {
+    println!("    \u{001B}[34m-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
+    println!("             Mumrik   version 0.0.1             ");
+    println!("    \u{001B}[34m-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
+    println!("");
     loop {
         print!("# ");
         stdout().flush().unwrap();
