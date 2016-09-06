@@ -19,9 +19,9 @@ pub fn eval(expr: Expression, env: &Env) -> i64 {
             }
         },
         Expression::Let(name, box init, box e) => {
-            let mut env = env.clone();
-            env.push((name, box init));
-            eval(e, &env)
+            let mut new_env = env.clone();
+            new_env.push((name, box Expression::Number(eval(init, env))));
+            eval(e, &new_env)
         },
     }
 }
