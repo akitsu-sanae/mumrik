@@ -2,7 +2,7 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 
-use std::str;
+use std::io;
 
 #[macro_use]
 extern crate nom;
@@ -10,6 +10,8 @@ extern crate nom;
 mod ast;
 mod parser;
 mod eval;
+
+use parser::expression;
 
 fn main() {
     println!("{:?}", parser::expression(b"1"));
@@ -27,5 +29,12 @@ fn main() {
     println!("{}", eval::eval(parser::expression(b"let a = 1+2; 12"), &vec![]));
     println!("{}", eval::eval(parser::expression(b"let b = 4*3; b+5"), &vec![]));
     println!("{}", eval::eval(parser::expression(b"let a = 4*3; let b = 3; a+b"), &vec![]));
+    loop {
+        let mut line = String::new();
+        io::stdin().read_line(&mut line).unwrap();
+        let expr = expression(line.as_bytes());
+        println!("{:?}", expr);
+        println!("{}", eval::eval(expr, &vec![]));
+    }
 }
 
