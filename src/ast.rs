@@ -6,7 +6,9 @@ pub enum Expression {
     Sub(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
     Div(Box<Expression>, Box<Expression>),
+    Apply(Box<Expression>, Box<Expression>),
     Var(String),
     Let(String, Box<Expression>, Box<Expression>),
+    Closure(String, Box<Expression>),
 }
 
