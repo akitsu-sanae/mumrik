@@ -23,15 +23,16 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             _ => panic!("add non number expression"),
         },
         Expression::Apply(box e1, box e2) => {
+            let f = eval(e1, env);
             let arg = eval(e2, env);
-            match e1 {
+            match f {
                 Expression::Closure(name, body) => {
                     let mut new_env = env.clone();
                     new_env.insert(0, (name, box arg));
                     eval(*body, &new_env)
                 },
                 _ => {
-                    println!("error: apply to non closure expression {:?}", e1);
+                    println!("error: apply to non closure expression {:?}", f);
                     exit(-1);
                 }
             }
