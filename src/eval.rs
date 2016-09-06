@@ -1,4 +1,3 @@
-use std::process::exit;
 use ast::Expression;
 
 type Env = Vec<(String, Box<Expression>)>;
@@ -31,18 +30,14 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
                     new_env.insert(0, (name, box arg));
                     eval(*body, &new_env)
                 },
-                _ => {
-                    println!("error: apply to non closure expression {:?}", f);
-                    exit(-1);
-                }
+                _ => Expression::Error(format!("apply to non closure expression: {:?}", f))
             }
         },
         Expression::Var(name) => {
             if let Some(e) = env.iter().find(|&e| e.0 == name) {
                 eval(*e.1.clone(), env)
             } else {
-                println!("no such variable: {}", name);
-                exit(-1);
+                Expression::Error(format!("no such variable: {}", name))
             }
         },
         Expression::Let(name, box init, box e) => {
@@ -51,5 +46,7 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             eval(e, &new_env)
         },
         Expression::Closure(name, box body) => Expression::Closure(name, box body),
+
+        Expression::Error(_) => expr,
     }
 }

@@ -15,6 +15,7 @@ mod eval;
 mod test;
 
 use parser::expression;
+use ast::Expression;
 
 fn main() {
     println!("    \u{001B}[34m-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
@@ -33,8 +34,13 @@ fn main() {
                 println!("how to use")
             },
             _ => {
-                let expr = expression(line.as_bytes());
-                println!(" => {:?}", eval::eval(expr, &vec![]));
+                let expr = eval::eval(expression(line.as_bytes()), &vec![]);
+                match expr {
+                    Expression::Error(msg) =>
+                        println!("\u{001B}[31merror\u{001B}[39m: {}", msg),
+                    _ =>
+                        println!("{:?}", expr),
+                }
             },
         }
     }
