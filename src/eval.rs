@@ -34,6 +34,14 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
                 _ => Expression::Error(format!("apply to non closure expression: {:?}", f))
             }
         },
+        Expression::If(box cond, box true_expr, box false_expr) => {
+            let cond = eval(cond, env);
+            match cond {
+                Expression::Bool(true) => eval(true_expr, env),
+                Expression::Bool(false) => eval(false_expr, env),
+                _ => Expression::Error(format!("can not implicitly cast {:?} to bool", cond)),
+            }
+        },
         Expression::Var(name) => {
             if let Some(e) = env.iter().find(|&e| e.0 == name) {
                 eval(*e.1.clone(), env)

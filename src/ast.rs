@@ -8,6 +8,7 @@ pub enum Expression {
     Mult(Box<Expression>, Box<Expression>),
     Div(Box<Expression>, Box<Expression>),
     Apply(Box<Expression>, Box<Expression>),
+    If(Box<Expression>, Box<Expression>, Box<Expression>),
     Var(String),
     Let(String, Box<Expression>, Box<Expression>),
     Closure(String, Box<Expression>),
