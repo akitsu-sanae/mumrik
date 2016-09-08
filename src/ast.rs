@@ -7,6 +7,7 @@ pub enum Expression {
     Sub(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
     Div(Box<Expression>, Box<Expression>),
+    Equal(Box<Expression>, Box<Expression>),
     Apply(Box<Expression>, Box<Expression>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
     Var(String),

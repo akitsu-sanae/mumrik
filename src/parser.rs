@@ -10,6 +10,7 @@ use ast::Expression;
 named!(expr<Expression>, alt!(
         let_expr |
         if_expr |
+        equal |
         additive
         ));
 
@@ -42,6 +43,16 @@ named!(if_expr<Expression>,
            false_expr: delimited!(char!('{'), expr, char!('}')),
            || Expression::If(box cond, box true_expr, box false_expr)
            ));
+
+named!(equal<Expression>, chain!(
+        multispace? ~
+        lhs: additive  ~
+        multispace? ~
+        char!('=') ~
+        multispace? ~
+        rhs: additive,
+        || Expression::Equal(box lhs, box rhs)
+        ));
 
 named!(additive<Expression>,
   chain!(

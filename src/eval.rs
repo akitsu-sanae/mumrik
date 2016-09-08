@@ -22,6 +22,13 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a/b),
             _ => panic!("add non number expression"),
         },
+        Expression::Equal(box lhs, box rhs) => {
+            match (eval(lhs.clone(), env), eval(rhs.clone(), env)) {
+                (Expression::Number(a), Expression::Number(b)) => Expression::Bool(a == b),
+                (Expression::Bool(a) , Expression::Bool(b)) => Expression::Bool(a == b),
+                _ => Expression::Error(format!("can not compare: {:?} and {:?}", lhs, rhs)),
+            }
+        },
         Expression::Apply(box e1, box e2) => {
             let f = eval(e1, env);
             let arg = eval(e2, env);
