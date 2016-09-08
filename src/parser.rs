@@ -68,6 +68,7 @@ named!(factor<Expression>,
        alt!(
            closure |
            number |
+           boolean |
            variable |
            parens
            )
@@ -82,6 +83,16 @@ named!(number<Expression>,
     |s: &str| Ok(Expression::Number(i64::from_str_radix(s, 10).unwrap())) as Result<Expression, ()>
   )
 );
+
+named!(boolean<Expression>, alt!(
+        map_res!(
+            tag!("true"),
+            |_: &[u8]| Ok(Expression::Bool(true)) as Result<Expression, ()>) |
+        map_res!(
+            tag!("false"),
+            |_: &[u8]| Ok(Expression::Bool(false)) as Result<Expression, ()>)
+        ));
+
 
 named!(variable<Expression>,
        map_res!(

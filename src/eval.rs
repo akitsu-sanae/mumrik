@@ -5,6 +5,7 @@ type Env = Vec<(String, Box<Expression>)>;
 pub fn eval(expr: Expression, env: &Env) -> Expression {
     match expr {
         Expression::Number(num) => Expression::Number(num),
+        Expression::Bool(_) => expr,
         Expression::Add(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a+b),
             _ => panic!("add non number expression"),

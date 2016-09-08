@@ -2,6 +2,7 @@
 #[derive(Debug, Clone)]
 pub enum Expression {
     Number(i64),
+    Bool(bool),
     Add(Box<Expression>, Box<Expression>),
     Sub(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
