@@ -4,8 +4,8 @@ use ast::Expression;
 pub enum Type {
     Primitive(String),
     Function(Box<Type>, Box<Type>),
-    Variant(Vec<Type>),
-    Tuple(Vec<Type>),
+    Variant(Box<Type>, Box<Type>),
+    Tuple(Box<Type>, Box<Type>),
 
     Error(String),
 }

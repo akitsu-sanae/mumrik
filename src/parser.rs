@@ -152,7 +152,7 @@ named!(closure<Expression>,
            name: string ~
            tag!(":") ~
            space ~
-           t: type_ ~
+           t: function_type ~
            space ~
            tag!("=>") ~
            space ~
@@ -160,18 +160,52 @@ named!(closure<Expression>,
            || Expression::Closure(name, box t, box e)
            ));
 
-// TODO: implemention for function, variant, tuple type
-named!(type_<Type>, // chain!(tag!("type"), || Type::Primitive("unknown".to_string())));
+named!(function_type<Type>,
+    alt!(
+       chain!(
+           from: variant_type ~
+           space ~
+           tag!("->") ~
+           space ~
+           to: function_type,
+           || Type::Function(box from, box to)
+           ) |
+       variant_type
+       ));
+
+named!(variant_type<Type>,
+       chain!(
+           mut acc: tuple_type ~
+        many0!(
+               tap!(t: preceded!(tag!("+"), tuple_type) => acc = Type::Variant(box acc, box t.clone()))
+        ),
+       || { return acc }
+       )
+   );
+
+named!(tuple_type<Type>,
+    chain!(
+        mut acc: primitive_type ~
+        many0!(
+               tap!(p: preceded!(tag!("*"), primitive_type) => acc = Type::Tuple(box acc, box p.clone()))
+        ),
+       || { return acc }
+       )
+   );
+
+
+named!(primitive_type<Type>,
        map_res!(
            string,
            |s: String| Ok(Type::Primitive(s)) as Result<Type, ()>
            )
     );
 
+
 named!(string<String>,
        map_res!(
            map_res!(
-               is_a!("abcdefghijklnmopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_?"),
+               is_a!("abcdefghijklnmopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_?"),
                str::from_utf8
                ),
                |s: &str| Ok(s.to_string()) as Result<String, ()>
