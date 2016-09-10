@@ -45,16 +45,31 @@ named!(if_expr<Expression>,
 
 named!(equal<Expression>,
     chain!(
-        mut acc: additive ~
+        mut acc: greater ~
         many0!(
             alt!(
-               tap!(a: preceded!(tag!("="), additive) => acc = Expression::Equal(box acc, box a.clone())) |
-               tap!(a: preceded!(tag!("/="), additive) => acc = Expression::NotEqual(box acc, box a.clone()))
+               tap!(a: preceded!(tag!("="), greater) => acc = Expression::Equal(box acc, box a.clone())) |
+               tap!(a: preceded!(tag!("/="), greater) => acc = Expression::NotEqual(box acc, box a.clone()))
                )
         ),
        || { return acc }
        )
    );
+
+named!(greater<Expression>,
+    chain!(
+        mut acc: additive ~
+        many0!(
+            alt!(
+               tap!(a: preceded!(tag!(">"), additive) => acc = Expression::GreaterThan(box acc, box a.clone())) |
+               tap!(a: preceded!(tag!("<"), additive) => acc = Expression::LessThan(box acc, box a.clone()))
+               )
+        ),
+       || { return acc }
+       )
+   );
+
+
 
 named!(additive<Expression>,
   chain!(

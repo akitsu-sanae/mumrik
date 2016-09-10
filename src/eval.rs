@@ -22,6 +22,18 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a/b),
             _ => panic!("add non number expression"),
         },
+        Expression::GreaterThan(box lhs, box rhs) => {
+            match (eval(lhs.clone(), env), eval(rhs.clone(), env)) {
+                (Expression::Number(a), Expression::Number(b)) => Expression::Bool(a > b),
+                _ => Expression::Error(format!("can not compare: {:?} and {:?}", lhs, rhs)),
+            }
+        },
+        Expression::LessThan(box lhs, box rhs) => {
+            match (eval(lhs.clone(), env), eval(rhs.clone(), env)) {
+                (Expression::Number(a), Expression::Number(b)) => Expression::Bool(a < b),
+                _ => Expression::Error(format!("can not compare: {:?} and {:?}", lhs, rhs)),
+            }
+        },
         Expression::Equal(box lhs, box rhs) => {
             match (eval(lhs.clone(), env), eval(rhs.clone(), env)) {
                 (Expression::Number(a), Expression::Number(b)) => Expression::Bool(a == b),
