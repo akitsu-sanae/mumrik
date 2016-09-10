@@ -33,9 +33,7 @@ pub fn check(expr: Expression, env: &Env) -> Type {
             Type::Function(box ty, box check(body, &new_env))
         },
         Expression::Add(box lhs, box rhs) | Expression::Sub(box lhs, box rhs) |
-        Expression::Mult(box lhs, box rhs) | Expression::Div(box lhs, box rhs) |
-        Expression::GreaterThan(box lhs, box rhs) | Expression::LessThan(box lhs, box rhs) |
-        Expression::Equal(box lhs, box rhs) | Expression::NotEqual(box lhs, box rhs) => {
+        Expression::Mult(box lhs, box rhs) | Expression::Div(box lhs, box rhs) => {
             let left_type = check(lhs, env);
             let right_type = check(rhs, env);
             if left_type == right_type {
@@ -43,7 +41,17 @@ pub fn check(expr: Expression, env: &Env) -> Type {
             } else {
                 Type::Error(format!("'+' no much type: {:?} and {:?}", left_type, right_type))
             }
-        }
+        },
+        Expression::GreaterThan(box lhs, box rhs) | Expression::LessThan(box lhs, box rhs) |
+        Expression::Equal(box lhs, box rhs) | Expression::NotEqual(box lhs, box rhs) => {
+            let left_type = check(lhs, env);
+            let right_type = check(rhs, env);
+            if left_type == right_type {
+                Type::Primitive("bool".to_string())
+            } else {
+                Type::Error(format!("'+' no much type: {:?} and {:?}", left_type, right_type))
+            }
+        },
         Expression::Apply(box f, box arg) => {
             let arg_type = check(arg, env);
             let f_type = check(f, env);
