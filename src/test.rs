@@ -23,5 +23,8 @@ fn eval_test() {
     println!("{:?}", eval(expression(b"let a = 1+2; 12"), &vec![]));
     println!("{:?}", eval(expression(b"let b = 4*3; b+5"), &vec![]));
     println!("{:?}", eval(expression(b"let a = 4*3; let b = 3; a+b"), &vec![]));
+    println!("{:?}", eval(expression(b"1=1"), &vec![]));
+    println!("{:?}", eval(expression(b"1+1=2"), &vec![]));
+    println!("{:?}", eval(expression(b"if 1+1=2 {5} else {7}"), &vec![]));
 }
 

@@ -10,8 +10,7 @@ use ast::Expression;
 named!(expr<Expression>, alt!(
         let_expr |
         if_expr |
-        equal |
-        additive
+        equal
         ));
 
 named!(let_expr<Expression>,
@@ -44,15 +43,15 @@ named!(if_expr<Expression>,
            || Expression::If(box cond, box true_expr, box false_expr)
            ));
 
-named!(equal<Expression>, chain!(
-        multispace? ~
-        lhs: additive  ~
-        multispace? ~
-        char!('=') ~
-        multispace? ~
-        rhs: additive,
-        || Expression::Equal(box lhs, box rhs)
-        ));
+named!(equal<Expression>,
+    chain!(
+        mut acc: additive ~
+        many0!(
+               tap!(a: preceded!(tag!("="), additive) => acc = Expression::Equal(box acc, box a.clone()))
+        ),
+       || { return acc }
+       )
+   );
 
 named!(additive<Expression>,
   chain!(
