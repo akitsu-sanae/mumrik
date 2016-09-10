@@ -47,7 +47,10 @@ named!(equal<Expression>,
     chain!(
         mut acc: additive ~
         many0!(
-               tap!(a: preceded!(tag!("="), additive) => acc = Expression::Equal(box acc, box a.clone()))
+            alt!(
+               tap!(a: preceded!(tag!("="), additive) => acc = Expression::Equal(box acc, box a.clone())) |
+               tap!(a: preceded!(tag!("/="), additive) => acc = Expression::NotEqual(box acc, box a.clone()))
+               )
         ),
        || { return acc }
        )
