@@ -12,10 +12,12 @@ extern crate nom;
 mod ast;
 mod parser;
 mod eval;
+mod tpe;
 mod test;
 
 use parser::expression;
 use ast::Expression;
+use tpe::Type;
 
 fn main() {
     println!("    \u{001B}[34m-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
@@ -34,12 +36,20 @@ fn main() {
                 println!("how to use")
             },
             _ => {
-                let expr = eval::eval(expression(line.as_bytes()), &vec![]);
-                match expr {
-                    Expression::Error(msg) =>
-                        println!("\u{001B}[31merror\u{001B}[39m: {}", msg),
-                    _ =>
-                        println!("{:?}", expr),
+                let ast = expression(line.as_bytes());
+                let ty = tpe::check(ast.clone(), &vec![]);
+                match ty {
+                    Type::Error(msg) =>
+                        println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
+                    _ => {
+                        println!("type: {:?}", ty);
+                        let expr = eval::eval(ast, &vec![]);
+                        match expr {
+                            Expression::Error(msg) =>
+                                println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
+                            _ => println!("value: {:?}", expr),
+                        }
+                    },
                 }
             },
         }

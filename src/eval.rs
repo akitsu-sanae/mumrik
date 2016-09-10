@@ -52,7 +52,7 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             let f = eval(e1, env);
             let arg = eval(e2, env);
             match f {
-                Expression::Closure(name, body) => {
+                Expression::Closure(name, _, body) => {
                     let mut new_env = env.clone();
                     new_env.insert(0, (name, box arg));
                     eval(*body, &new_env)
@@ -80,7 +80,7 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             new_env.insert(0, (name, box eval(init, env)));
             eval(e, &new_env)
         },
-        Expression::Closure(name, box body) => Expression::Closure(name, box body),
+        Expression::Closure(name, box ty, box body) => Expression::Closure(name, box ty, box body),
 
         Expression::Error(_) => expr,
     }

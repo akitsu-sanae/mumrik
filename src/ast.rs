@@ -1,8 +1,11 @@
 
+use tpe::Type;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Number(i64),
     Bool(bool),
+    Closure(String, Box<Type>, Box<Expression>),
     Add(Box<Expression>, Box<Expression>),
     Sub(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
@@ -15,7 +18,6 @@ pub enum Expression {
     If(Box<Expression>, Box<Expression>, Box<Expression>),
     Var(String),
     Let(String, Box<Expression>, Box<Expression>),
-    Closure(String, Box<Expression>),
 
     Error(String),
 }

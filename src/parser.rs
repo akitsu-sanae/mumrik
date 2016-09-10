@@ -2,6 +2,7 @@ use std::str;
 use std::i64;
 use nom::*;
 use ast::Expression;
+use tpe::Type;
 
 
 /*
@@ -149,17 +150,28 @@ named!(closure<Expression>,
            tag!("func") ~
            space ~
            name: string ~
+           tag!(":") ~
+           space ~
+           t: type_ ~
            space ~
            tag!("=>") ~
            space ~
            e: expr,
-           || Expression::Closure(name, box e)
+           || Expression::Closure(name, box t, box e)
            ));
+
+// TODO: implemention for function, variant, tuple type
+named!(type_<Type>, // chain!(tag!("type"), || Type::Primitive("unknown".to_string())));
+       map_res!(
+           string,
+           |s: String| Ok(Type::Primitive(s)) as Result<Type, ()>
+           )
+    );
 
 named!(string<String>,
        map_res!(
            map_res!(
-               is_a!("abcdefghijklmopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_?"),
+               is_a!("abcdefghijklnmopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_?"),
                str::from_utf8
                ),
                |s: &str| Ok(s.to_string()) as Result<String, ()>
