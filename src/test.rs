@@ -1,6 +1,8 @@
 use parser::expression;
 use eval::eval;
 use ast::Expression;
+use tpe::Type;
+use tpe::check;
 
 #[test]
 fn parsing_test() {
@@ -94,6 +96,27 @@ fn parsing_test() {
             box Expression::Number(1),
             box Expression::Number(2)));
 
+}
+
+#[test]
+fn type_test() {
+    assert_eq!(check(&expression(b"1"), &vec![]), Type::Primitive("int".to_string()));
+    assert_eq!(check(&expression(b"1+2"), &vec![]), Type::Primitive("int".to_string()));
+    assert_eq!(check(&expression(b"1+2*4"), &vec![]), Type::Primitive("int".to_string()));
+    assert_eq!(check(&expression(b"true"), &vec![]), Type::Primitive("bool".to_string()));
+    assert_eq!(check(&expression(b"func x: int => x"), &vec![]), Type::Function(box Type::Primitive("int".to_string()), box Type::Primitive("int".to_string())));
+    assert_eq!(check(&expression(b"func x: int -> int => x@2"), &vec![]),
+        Type::Function(
+            box Type::Function(
+                box Type::Primitive("int".to_string()),
+                box Type::Primitive("int".to_string())),
+            box Type::Primitive("int".to_string())));
+    assert_eq!(check(&expression(b"let a = 1; 2"), &vec![]), Type::Primitive("int".to_string()));
+    assert_eq!(check(&expression(b"let a = 1; false"), &vec![]), Type::Primitive("bool".to_string()));
+    assert_eq!(check(&expression(b"1=2"), &vec![]), Type::Primitive("bool".to_string()));
+    assert_eq!(check(&expression(b"if 1=1 {true} else {false}"), &vec![]), Type::Primitive("bool".to_string()));
+    assert_eq!(check(&expression(b"if 1 {2} else {4}"), &vec![]), Type::Error("condition in if expression must be boolean: Number(1)".to_string()));
+    assert_eq!(check(&expression(b"if true {false} else {4}"), &vec![]), Type::Error("type not much: Primitive(\"bool\") and Primitive(\"int\")".to_string()));
 }
 
 #[test]
