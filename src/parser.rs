@@ -143,8 +143,7 @@ named!(variable<Expression>,
 
 named!(closure<Expression>,
        chain!(
-           tag!("func") ~
-           space ~
+           tag!("\\") ~
            name: string ~
            tag!(":") ~
            space ~

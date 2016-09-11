@@ -104,8 +104,8 @@ fn type_test() {
     assert_eq!(check(&expression(b"1+2"), &vec![]), Type::Primitive("int".to_string()));
     assert_eq!(check(&expression(b"1+2*4"), &vec![]), Type::Primitive("int".to_string()));
     assert_eq!(check(&expression(b"true"), &vec![]), Type::Primitive("bool".to_string()));
-    assert_eq!(check(&expression(b"func x: int => x"), &vec![]), Type::Function(box Type::Primitive("int".to_string()), box Type::Primitive("int".to_string())));
-    assert_eq!(check(&expression(b"func x: int -> int => x@2"), &vec![]),
+    assert_eq!(check(&expression(b"\\x: int => x"), &vec![]), Type::Function(box Type::Primitive("int".to_string()), box Type::Primitive("int".to_string())));
+    assert_eq!(check(&expression(b"\\x: int -> int => x@2"), &vec![]),
         Type::Function(
             box Type::Function(
                 box Type::Primitive("int".to_string()),
