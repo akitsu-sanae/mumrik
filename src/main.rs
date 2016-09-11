@@ -57,13 +57,13 @@ fn main() {
 
 fn exec(src: String) {
     let ast = expression(src.as_bytes());
-    let ty = tpe::check(ast.clone(), &vec![]);
+    let ty = tpe::check(&ast, &vec![]);
     match ty {
         Type::Error(msg) =>
             println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
         _ => {
             println!("type: {:?}", ty);
-            let expr = eval::eval(ast, &vec![]);
+            let expr = eval::eval(&ast, &vec![]);
             match expr {
                 Expression::Error(msg) =>
                     println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),

@@ -98,25 +98,25 @@ fn parsing_test() {
 
 #[test]
 fn eval_test() {
-    assert_eq!(eval(expression(b"1"), &vec![]), Expression::Number(1));
-    assert_eq!(eval(expression(b"1+2"), &vec![]), Expression::Number(3));
-    assert_eq!(eval(expression(b"1+2+3"), &vec![]), Expression::Number(6));
-    assert_eq!(eval(expression(b"2*3"), &vec![]), Expression::Number(6));
-    assert_eq!(eval(expression(b"4+2*3"), &vec![]), Expression::Number(10));
-    assert_eq!(eval(expression(b"5*4+1-3"), &vec![]), Expression::Number(18));
-    assert_eq!(eval(expression(b"hoge"), &vec![]), Expression::Error("no such variable: hoge".to_string()));
+    assert_eq!(eval(&expression(b"1"), &vec![]), Expression::Number(1));
+    assert_eq!(eval(&expression(b"1+2"), &vec![]), Expression::Number(3));
+    assert_eq!(eval(&expression(b"1+2+3"), &vec![]), Expression::Number(6));
+    assert_eq!(eval(&expression(b"2*3"), &vec![]), Expression::Number(6));
+    assert_eq!(eval(&expression(b"4+2*3"), &vec![]), Expression::Number(10));
+    assert_eq!(eval(&expression(b"5*4+1-3"), &vec![]), Expression::Number(18));
+    assert_eq!(eval(&expression(b"hoge"), &vec![]), Expression::Error("no such variable: hoge".to_string()));
 
-    assert_eq!(eval(expression(b"let a = 1; 2"), &vec![]), Expression::Number(2));
-    assert_eq!(eval(expression(b"let a = 1+2; let b = 2+5; a*b"), &vec![]), Expression::Number(21));
+    assert_eq!(eval(&expression(b"let a = 1; 2"), &vec![]), Expression::Number(2));
+    assert_eq!(eval(&expression(b"let a = 1+2; let b = 2+5; a*b"), &vec![]), Expression::Number(21));
 
-    assert_eq!(eval(expression(b"if true {1} else {2}"), &vec![]), Expression::Number(1));
-    assert_eq!(eval(expression(b"if 1=1 {1} else {2}"), &vec![]), Expression::Number(1));
-    assert_eq!(eval(expression(b"if 1+1=2 {1} else {2}"), &vec![]), Expression::Number(1));
+    assert_eq!(eval(&expression(b"if true {1} else {2}"), &vec![]), Expression::Number(1));
+    assert_eq!(eval(&expression(b"if 1=1 {1} else {2}"), &vec![]), Expression::Number(1));
+    assert_eq!(eval(&expression(b"if 1+1=2 {1} else {2}"), &vec![]), Expression::Number(1));
 
-    assert_eq!(eval(expression(b"if 1/=1 {1} else {2}"), &vec![]), Expression::Number(2));
-    assert_eq!(eval(expression(b"1>1"), &vec![]), Expression::Bool(false));
-    assert_eq!(eval(expression(b"2>1"), &vec![]), Expression::Bool(true));
-    assert_eq!(eval(expression(b"if 1<2 {1} else {2}"), &vec![]), Expression::Number(1));
-    assert_eq!(eval(expression(b"if 1>2 {1} else {2}"), &vec![]),  Expression::Number(2));
+    assert_eq!(eval(&expression(b"if 1/=1 {1} else {2}"), &vec![]), Expression::Number(2));
+    assert_eq!(eval(&expression(b"1>1"), &vec![]), Expression::Bool(false));
+    assert_eq!(eval(&expression(b"2>1"), &vec![]), Expression::Bool(true));
+    assert_eq!(eval(&expression(b"if 1<2 {1} else {2}"), &vec![]), Expression::Number(1));
+    assert_eq!(eval(&expression(b"if 1>2 {1} else {2}"), &vec![]),  Expression::Number(2));
 }
 
