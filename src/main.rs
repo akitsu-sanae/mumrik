@@ -4,7 +4,9 @@
 
 use std::io;
 use std::io::Write;
+use std::io::Read;
 use std::io::stdout;
+use std::fs::File;
 
 #[macro_use]
 extern crate nom;
@@ -35,24 +37,37 @@ fn main() {
             "help" => {
                 println!("how to use")
             },
-            _ => {
-                let ast = expression(line.as_bytes());
-                let ty = tpe::check(ast.clone(), &vec![]);
-                match ty {
-                    Type::Error(msg) =>
-                        println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
-                    _ => {
-                        println!("type: {:?}", ty);
-                        let expr = eval::eval(ast, &vec![]);
-                        match expr {
-                            Expression::Error(msg) =>
-                                println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
-                            _ => println!("value: {:?}", expr),
-                        }
-                    },
-                }
+            "load" => {
+                print!("filename: ");
+                io::stdout().flush().unwrap();
+                let mut filename = String::new();
+                io::stdin().read_line(&mut filename).unwrap();
+                let mut src = String::new();
+                File::open(filename.as_str().trim()).and_then(|mut f| {
+                    f.read_to_string(&mut src)
+                }).expect("not such file");
+                exec(src)
             },
+            _ => exec(line),
         }
+    }
+}
+
+fn exec(src: String) {
+    let ast = expression(src.as_bytes());
+    let ty = tpe::check(ast.clone(), &vec![]);
+    match ty {
+        Type::Error(msg) =>
+            println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
+        _ => {
+            println!("type: {:?}", ty);
+            let expr = eval::eval(ast, &vec![]);
+            match expr {
+                Expression::Error(msg) =>
+                    println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
+                _ => println!("value: {:?}", expr),
+            }
+        },
     }
 }
 
