@@ -52,7 +52,7 @@ pub fn check(expr: &Expression, env: &Env) -> Type {
         },
         &Expression::If(box ref cond, box ref t, box ref f) => {
             match check(cond, env) {
-                Type::Primitive(ref name) if name == &"bool".to_string() => {
+                Type::Primitive(ref name) if name.clone() != "bool".to_string() => {
                     Type::Error(format!("condition in if expression must be boolean: {:?}", cond))
                 },
                 _ => {
