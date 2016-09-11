@@ -5,10 +5,33 @@ use ast::Expression;
 use tpe::Type;
 
 named!(expr<Expression>, alt!(
+        func_expr |
         let_expr |
         if_expr |
         equal
         ));
+
+named!(func_expr<Expression>,
+       chain!(
+           tag!("func") ~
+           multispace ~
+           name: string ~
+           multispace ~
+           arg_name: string ~
+           multispace? ~
+           tag!(":") ~
+           multispace? ~
+           ty: function_type ~
+           multispace? ~
+           tag!("=") ~
+           multispace? ~
+           e: expr ~
+           multispace? ~
+           after: expr,
+           || {
+               Expression::Let(name, box Expression::Closure(arg_name, box ty, box e), box after)
+           }));
+
 
 named!(let_expr<Expression>,
        chain!(
