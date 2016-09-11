@@ -15,6 +15,8 @@ mod ast;
 mod parser;
 mod eval;
 mod tpe;
+
+#[cfg(test)]
 mod test;
 
 use parser::expression;

@@ -4,23 +4,24 @@ type Env = Vec<(String, Box<Expression>)>;
 
 pub fn eval(expr: Expression, env: &Env) -> Expression {
     match expr {
-        Expression::Number(num) => Expression::Number(num),
-        Expression::Bool(_) => expr,
+        Expression::Number(_) | Expression::Bool(_) |
+        Expression::Closure(_, _, _) | Expression::Error(_) => expr,
+
         Expression::Add(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a+b),
-            _ => panic!("add non number expression"),
+            _ => Expression::Error(format!("non number expression cen not be added: {:?} + {:?}", e1, e2)),
         },
         Expression::Sub(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a-b),
-            _ => panic!("add non number expression"),
+            _ => Expression::Error(format!("non number expression cen not be subed: {:?} + {:?}", e1, e2)),
         },
         Expression::Mult(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a*b),
-            _ => panic!("add non number expression"),
+            _ => Expression::Error(format!("non number expression cen not be multed: {:?} + {:?}", e1, e2)),
         },
         Expression::Div(box e1, box e2) => match (eval(e1, env), eval(e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a/b),
-            _ => panic!("add non number expression"),
+            _ => Expression::Error(format!("non number expression cen not be dived: {:?} + {:?}", e1, e2)),
         },
         Expression::GreaterThan(box lhs, box rhs) => {
             match (eval(lhs.clone(), env), eval(rhs.clone(), env)) {
@@ -80,8 +81,5 @@ pub fn eval(expr: Expression, env: &Env) -> Expression {
             new_env.insert(0, (name, box eval(init, env)));
             eval(e, &new_env)
         },
-        Expression::Closure(name, box ty, box body) => Expression::Closure(name, box ty, box body),
-
-        Expression::Error(_) => expr,
     }
 }

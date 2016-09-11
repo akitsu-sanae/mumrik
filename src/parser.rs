@@ -4,10 +4,6 @@ use nom::*;
 use ast::Expression;
 use tpe::Type;
 
-
-/*
- * expr := let x = additive; expr
- * */
 named!(expr<Expression>, alt!(
         let_expr |
         if_expr |

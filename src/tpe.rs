@@ -10,17 +10,6 @@ pub enum Type {
     Error(String),
 }
 
-impl Type {
-    pub fn error_or<F>(self, f: F)
-        where F: Fn(Type) -> ()
-    {
-        match self {
-            Type::Error(msg) => println!("\u{001B}[31merror\u{001B}[39m: {}", msg),
-            _ => f(self),
-        }
-    }
-}
-
 type Env = Vec<(String, Box<Type>)>;
 
 pub fn check(expr: Expression, env: &Env) -> Type {
@@ -89,7 +78,7 @@ pub fn check(expr: Expression, env: &Env) -> Type {
             new_env.insert(0, (name, box check(init, env)));
             check(e, &new_env)
         },
-        Expression::Error(_) => panic!("valid expression")
+        Expression::Error(_) => panic!("invalid expression")
     }
 }
 
