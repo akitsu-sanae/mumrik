@@ -7,9 +7,19 @@ use tpe::Type;
 named!(expr<Expression>, alt!(
         func_expr |
         let_expr |
+        println |
         if_expr |
         equal
         ));
+
+named!(println<Expression>,
+       chain!(
+           tag!("println") ~
+           multispace ~
+           e: expr,
+           || { Expression::Println(box e) }
+           )
+       );
 
 named!(func_expr<Expression>,
        chain!(

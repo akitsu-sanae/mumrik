@@ -19,6 +19,8 @@ pub enum Expression {
     Var(String),
     Let(String, Box<Expression>, Box<Expression>),
 
+    Println(Box<Expression>),
+
     Error(String),
 }
 

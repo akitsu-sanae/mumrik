@@ -78,6 +78,7 @@ pub fn check(expr: &Expression, env: &Env) -> Type {
             new_env.insert(0, (name.clone(), box check(init, env)));
             check(e, &new_env)
         },
+        &Expression::Println(box ref e) => check(e, env),
         &Expression::Error(_) => panic!("invalid expression")
     }
 }

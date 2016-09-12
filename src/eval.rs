@@ -81,5 +81,18 @@ pub fn eval(expr: &Expression, env: &Env) -> Expression {
             new_env.insert(0, (name.clone(), box eval(&init, env)));
             eval(&e, &new_env)
         },
+        &Expression::Println(box ref e) => {
+            match eval(e, env) {
+                Expression::Number(n) => {
+                    println!("{}", n);
+                    e.clone()
+                },
+                Expression::Bool(b) => {
+                    println!("{}", b);
+                    e.clone()
+                },
+                _ => Expression::Error(format!("expression {:?} is not printable", e)),
+            }
+        },
     }
 }
