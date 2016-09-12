@@ -4,12 +4,16 @@ use nom::*;
 use ast::Expression;
 use tpe::Type;
 
-named!(expr<Expression>, alt!(
-        func_expr |
-        let_expr |
-        println |
-        if_expr |
-        equal
+named!(expr<Expression>, chain!(
+        multispace? ~
+        e: alt!(
+            func_expr |
+            let_expr |
+            println |
+            if_expr |
+            equal) ~
+        multispace?,
+        || e
         ));
 
 named!(println<Expression>,
@@ -51,7 +55,7 @@ named!(let_expr<Expression>,
            space ~
            char!('=') ~
            space ~
-           init: additive ~
+           init: equal ~
            char!(';') ~
            space ~
            e: expr,
@@ -75,26 +79,32 @@ named!(if_expr<Expression>,
 
 named!(equal<Expression>,
     chain!(
+        multispace? ~
         mut acc: greater ~
+        multispace? ~
         many0!(
             alt!(
                tap!(a: preceded!(tag!("="), greater) => acc = Expression::Equal(box acc, box a.clone())) |
                tap!(a: preceded!(tag!("/="), greater) => acc = Expression::NotEqual(box acc, box a.clone()))
                )
-        ),
+        ) ~
+        multispace?,
        || { return acc }
        )
    );
 
 named!(greater<Expression>,
     chain!(
+        multispace? ~
         mut acc: additive ~
+        multispace? ~
         many0!(
             alt!(
                tap!(a: preceded!(tag!(">"), additive) => acc = Expression::GreaterThan(box acc, box a.clone())) |
                tap!(a: preceded!(tag!("<"), additive) => acc = Expression::LessThan(box acc, box a.clone()))
                )
-        ),
+        ) ~
+        multispace?,
        || { return acc }
        )
    );
@@ -102,50 +112,62 @@ named!(greater<Expression>,
 
 
 named!(additive<Expression>,
-  chain!(
-    mut acc: multive  ~
-             many0!(
-               alt!(
-                 tap!(add: preceded!(tag!("+"), multive) => acc = Expression::Add(box acc, box add.clone())) |
-                 tap!(sub: preceded!(tag!("-"), multive) => acc = Expression::Sub(box acc, box sub.clone()))
-               )
-             ),
-    || { return acc }
-  )
-);
+    chain!(
+        multispace? ~
+        mut acc: multive  ~
+        multispace? ~
+        many0!(
+            alt!(
+                tap!(add: preceded!(tag!("+"), multive) => acc = Expression::Add(box acc, box add.clone())) |
+                tap!(sub: preceded!(tag!("-"), multive) => acc = Expression::Sub(box acc, box sub.clone()))
+                )
+            ) ~
+        multispace?,
+        || { return acc }
+        )
+    );
 
 named!(multive<Expression>,
-  chain!(
-    mut acc: apply  ~
-             many0!(
-               alt!(
-                 tap!(mul: preceded!(tag!("*"), apply) => acc = Expression::Mult(box acc, box mul.clone())) |
-                 tap!(div: preceded!(tag!("/"), apply) => acc = Expression::Div(box acc, box div.clone()))
+   chain!(
+       multispace? ~
+       mut acc: apply  ~
+       multispace? ~
+       many0!(
+           alt!(
+               tap!(mul: preceded!(tag!("*"), apply) => acc = Expression::Mult(box acc, box mul.clone())) |
+               tap!(div: preceded!(tag!("/"), apply) => acc = Expression::Div(box acc, box div.clone()))
                )
-             ),
-    || { return acc }
-  )
-);
-
-named!(apply<Expression>,
-    chain!(
-        mut acc: factor ~
-        many0!(
-               tap!(f: preceded!(tag!("@"), factor) => acc = Expression::Apply(box acc, box f.clone()))
-        ),
+           ) ~
+       multispace?,
        || { return acc }
        )
    );
 
+named!(apply<Expression>,
+    chain!(
+        multispace? ~
+        mut acc: factor ~
+        multispace? ~
+        many0!(
+            tap!(f: preceded!(tag!("@"), factor) => acc = Expression::Apply(box acc, box f.clone()))
+            ) ~
+        multispace?,
+        || { return acc }
+        )
+    );
+
 named!(factor<Expression>,
-       alt!(
+   chain!(
+       multispace? ~
+       e: alt!(
            closure |
            number |
            boolean |
            variable |
-           parens
-           )
-      );
+           parens) ~
+       multispace?,
+       || e
+       ));
 
 named!(number<Expression>,
   map_res!(
@@ -177,13 +199,14 @@ named!(variable<Expression>,
 named!(closure<Expression>,
        chain!(
            tag!("\\") ~
+           multispace? ~
            name: string ~
+           multispace? ~
            tag!(":") ~
-           space ~
+           multispace? ~
            t: function_type ~
-           space ~
+           multispace? ~
            tag!("=>") ~
-           space ~
            e: expr,
            || Expression::Closure(name, box t, box e)
            ));
@@ -192,9 +215,9 @@ named!(function_type<Type>,
     alt!(
        chain!(
            from: variant_type ~
-           space ~
+           multispace? ~
            tag!("->") ~
-           space ~
+           multispace? ~
            to: function_type,
            || Type::Function(box from, box to)
            ) |
@@ -204,10 +227,10 @@ named!(function_type<Type>,
 named!(variant_type<Type>,
        chain!(
            mut acc: tuple_type ~
-        many0!(
+           many0!(
                tap!(t: preceded!(tag!("+"), tuple_type) => acc = Type::Variant(box acc, box t.clone()))
-        ),
-       || { return acc }
+           ),
+           || { return acc }
        )
    );
 
@@ -223,11 +246,15 @@ named!(tuple_type<Type>,
 
 
 named!(primitive_type<Type>,
-       map_res!(
-           string,
-           |s: String| Ok(Type::Primitive(s)) as Result<Type, ()>
-           )
-    );
+       chain!(
+           multispace? ~
+           e: map_res!(
+               string,
+               |s: String| Ok(Type::Primitive(s)) as Result<Type, ()>
+               ) ~
+           multispace?,
+           || e
+          ));
 
 
 named!(string<String>,
