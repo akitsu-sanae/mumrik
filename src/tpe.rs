@@ -12,6 +12,20 @@ pub enum Type {
 
 type Env = Vec<(String, Box<Type>)>;
 
+fn op(e: &Expression) -> char {
+    match e {
+        &Expression::Add(_, _) => '+',
+        &Expression::Sub(_, _) => '-',
+        &Expression::Mult(_, _) => '*',
+        &Expression::Div(_, _) => '/',
+        &Expression::GreaterThan(_, _) => '>',
+        &Expression::LessThan(_, _) => '<',
+        &Expression::Equal(_, _) => '=',
+        &Expression::NotEqual(_, _) => '!',
+        _ => '?',
+    }
+}
+
 pub fn check(expr: &Expression, env: &Env) -> Type {
     match expr {
         &Expression::Number(_) => Type::Primitive("int".to_string()),
@@ -28,7 +42,7 @@ pub fn check(expr: &Expression, env: &Env) -> Type {
             if left_type == right_type {
                 left_type
             } else {
-                Type::Error(format!("'+' no much type: {:?} and {:?}", left_type, right_type))
+                Type::Error(format!("'{}' no much type: {:?} and {:?}", op(expr), left_type, right_type))
             }
         },
         &Expression::GreaterThan(box ref lhs, box ref rhs) | &Expression::LessThan(box ref lhs, box ref rhs) |
@@ -38,7 +52,7 @@ pub fn check(expr: &Expression, env: &Env) -> Type {
             if left_type == right_type {
                 Type::Primitive("bool".to_string())
             } else {
-                Type::Error(format!("'+' no much type: {:?} and {:?}", left_type, right_type))
+                Type::Error(format!("'{}' no much type: {:?} and {:?}", op(expr), left_type, right_type))
             }
         },
         &Expression::Apply(box ref f, box ref arg) => {
