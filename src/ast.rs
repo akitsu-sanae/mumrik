@@ -10,6 +10,7 @@ pub enum Expression {
     Sub(Box<Expression>, Box<Expression>),
     Mult(Box<Expression>, Box<Expression>),
     Div(Box<Expression>, Box<Expression>),
+    Mod(Box<Expression>, Box<Expression>),
     GreaterThan(Box<Expression>, Box<Expression>),
     LessThan(Box<Expression>, Box<Expression>),
     Equal(Box<Expression>, Box<Expression>),

@@ -36,7 +36,8 @@ pub fn check(expr: &Expression, env: &Env) -> Type {
             Type::Function(box ty.clone(), box check(body, &new_env))
         },
         &Expression::Add(box ref lhs, box ref rhs) | &Expression::Sub(box ref lhs, box ref rhs) |
-        &Expression::Mult(box ref lhs, box ref rhs) | &Expression::Div(box ref lhs, box ref rhs) => {
+        &Expression::Mult(box ref lhs, box ref rhs) | &Expression::Div(box ref lhs, box ref rhs) |
+        &Expression::Mod(box ref lhs, box ref rhs) => {
             let left_type = check(lhs, env);
             let right_type = check(rhs, env);
             if left_type == right_type {

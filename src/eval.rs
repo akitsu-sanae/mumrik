@@ -23,6 +23,10 @@ pub fn eval(expr: &Expression, env: &Env) -> Expression {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a/b),
             _ => Expression::Error(format!("non number expression cen not be dived: {:?} + {:?}", e1, e2)),
         },
+        &Expression::Mod(box ref e1, box ref e2) => match (eval(e1, env), eval(e2, env)) {
+            (Expression::Number(a), Expression::Number(b)) => Expression::Number(a%b),
+            _ => Expression::Error(format!("non number expression can not be moded: {:?} % {:?}", e1, e2)),
+        },
         &Expression::GreaterThan(box ref lhs, box ref rhs) => {
             match (eval(&lhs, env), eval(&rhs, env)) {
                 (Expression::Number(a), Expression::Number(b)) => Expression::Bool(a > b),

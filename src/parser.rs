@@ -135,7 +135,8 @@ named!(multive<Expression>,
        many0!(
            alt!(
                tap!(mul: preceded!(tag!("*"), apply) => acc = Expression::Mult(box acc, box mul.clone())) |
-               tap!(div: preceded!(tag!("/"), apply) => acc = Expression::Div(box acc, box div.clone()))
+               tap!(div: preceded!(tag!("/"), apply) => acc = Expression::Div(box acc, box div.clone())) |
+               tap!(m: preceded!(tag!("%"), apply) => acc = Expression::Mod(box acc, box m.clone()))
                )
            ) ~
        multispace?,
