@@ -9,19 +9,19 @@ pub fn eval(expr: &Expression, env: &Env) -> Expression {
 
         &Expression::Add(box ref e1, box ref e2) => match (eval(&e1, env), eval(&e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a+b),
-            _ => Expression::Error(format!("non number expression cen not be added: {:?} + {:?}", e1, e2)),
+            _ => Expression::Error(format!("non number expression can not be added: {:?} + {:?}", e1, e2)),
         },
         &Expression::Sub(box ref e1, box ref e2) => match (eval(&e1, env), eval(&e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a-b),
-            _ => Expression::Error(format!("non number expression cen not be subed: {:?} + {:?}", e1, e2)),
+            _ => Expression::Error(format!("non number expression can not be subed: {:?} - {:?}", e1, e2)),
         },
         &Expression::Mult(box ref e1, box ref e2) => match (eval(&e1, env), eval(&e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a*b),
-            _ => Expression::Error(format!("non number expression cen not be multed: {:?} + {:?}", e1, e2)),
+            _ => Expression::Error(format!("non number expression can not be multed: {:?} * {:?}", e1, e2)),
         },
         &Expression::Div(box ref e1, box ref e2) => match (eval(&e1, env), eval(&e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a/b),
-            _ => Expression::Error(format!("non number expression cen not be dived: {:?} + {:?}", e1, e2)),
+            _ => Expression::Error(format!("non number expression can not be dived: {:?} / {:?}", e1, e2)),
         },
         &Expression::Mod(box ref e1, box ref e2) => match (eval(e1, env), eval(e2, env)) {
             (Expression::Number(a), Expression::Number(b)) => Expression::Number(a%b),

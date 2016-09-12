@@ -12,17 +12,18 @@ pub enum Type {
 
 type Env = Vec<(String, Box<Type>)>;
 
-fn op(e: &Expression) -> char {
+fn op(e: &Expression) -> &str {
     match e {
-        &Expression::Add(_, _) => '+',
-        &Expression::Sub(_, _) => '-',
-        &Expression::Mult(_, _) => '*',
-        &Expression::Div(_, _) => '/',
-        &Expression::GreaterThan(_, _) => '>',
-        &Expression::LessThan(_, _) => '<',
-        &Expression::Equal(_, _) => '=',
-        &Expression::NotEqual(_, _) => '!',
-        _ => '?',
+        &Expression::Add(_, _) => "+",
+        &Expression::Sub(_, _) => "-",
+        &Expression::Mult(_, _) => "*",
+        &Expression::Mod(_, _) => "%",
+        &Expression::Div(_, _) => "/",
+        &Expression::GreaterThan(_, _) => ">",
+        &Expression::LessThan(_, _) => "<",
+        &Expression::Equal(_, _) => "=",
+        &Expression::NotEqual(_, _) => "/=",
+        _ => "invalid operator",
     }
 }
 
