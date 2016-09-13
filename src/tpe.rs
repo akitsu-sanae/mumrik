@@ -94,6 +94,17 @@ pub fn check(expr: &Expression, env: &Env) -> Type {
             new_env.insert(0, (name.clone(), box check(init, env)));
             check(e, &new_env)
         },
+        &Expression::RecFunc(ref name, ref arg_name, box ref arg_type, box ref return_type, box ref body, box ref after) => {
+            let mut new_env = env.clone();
+            new_env.insert(0, (arg_name.clone(), box arg_type.clone()));
+            new_env.insert(0, (name.clone(), box Type::Function(box arg_type.clone(), box return_type.clone())));
+            let t = check(body, &new_env);
+            if t != return_type.clone() {
+                Type::Error(format!("func {} : expression {:?} returns {:?}, not {:?}", name, body, t, return_type))
+            } else {
+                check(after, &new_env)
+            }
+        },
         &Expression::Println(box ref e) => check(e, env),
         &Expression::Error(_) => panic!("invalid expression")
     }

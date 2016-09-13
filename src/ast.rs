@@ -19,6 +19,7 @@ pub enum Expression {
     If(Box<Expression>, Box<Expression>, Box<Expression>),
     Var(String),
     Let(String, Box<Expression>, Box<Expression>),
+    RecFunc(String, String, Box<Type>, Box<Type>, Box<Expression>, Box<Expression>),
 
     Println(Box<Expression>),
 

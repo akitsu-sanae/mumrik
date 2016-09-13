@@ -85,6 +85,12 @@ pub fn eval(expr: &Expression, env: &Env) -> Expression {
             new_env.insert(0, (name.clone(), box eval(&init, env)));
             eval(&e, &new_env)
         },
+
+        &Expression::RecFunc(ref name, ref arg_name, box ref arg_type, box ref _ret_type, box ref body, box ref after) => {
+            let mut new_env = env.clone();
+            new_env.insert(0, (name.clone(), box Expression::Closure(arg_name.clone(), box arg_type.clone(), box body.clone())));
+            eval(&after, &new_env)
+        },
         &Expression::Println(box ref e) => {
             match eval(e, env) {
                 Expression::Number(n) => {

@@ -26,25 +26,48 @@ named!(println<Expression>,
        );
 
 named!(func_expr<Expression>,
-       chain!(
-           tag!("func") ~
-           multispace ~
-           name: string ~
-           multispace ~
-           arg_name: string ~
-           multispace? ~
-           tag!(":") ~
-           multispace? ~
-           ty: function_type ~
-           multispace? ~
-           tag!("=") ~
-           multispace? ~
-           e: expr ~
-           multispace? ~
-           after: expr,
-           || {
-               Expression::Let(name, box Expression::Closure(arg_name, box ty, box e), box after)
-           }));
+       alt!(
+           chain!(
+               tag!("func") ~
+               multispace ~
+               name: string ~
+               multispace ~
+               arg_name: string ~
+               multispace? ~
+               tag!(":") ~
+               multispace? ~
+               ty: function_type ~
+               multispace? ~
+               e: expr ~
+               multispace? ~
+               after: expr,
+               || {
+                   Expression::Let(name, box Expression::Closure(arg_name, box ty, box e), box after)
+               }) |
+           chain!(
+               tag!("rec") ~
+               multispace ~
+               tag!("func") ~
+               multispace ~
+               name: string ~
+               multispace ~
+               arg_name: string ~
+               multispace? ~
+               tag!(":") ~
+               multispace? ~
+               ty: function_type ~
+               multispace? ~
+               tag!(":") ~
+               multispace? ~
+               ret_type: function_type ~
+               multispace? ~
+               tag!("=") ~
+               e: expr ~
+               after: expr,
+               || {
+                   Expression::RecFunc(name, arg_name, box ty, box ret_type, box e, box after)
+               })
+));
 
 
 named!(let_expr<Expression>,
