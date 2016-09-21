@@ -10,8 +10,8 @@ named!(expr<Expression>, chain!(
             func_expr |
             let_expr |
             println |
-            sequence_expr |
-            equal) ~
+            if_expr |
+            sequence_expr) ~
         multispace?,
         || e
         ));
@@ -24,7 +24,6 @@ named!(println<Expression>,
            || { Expression::Println(box e) }
            )
        );
-
 named!(func_expr<Expression>,
        alt!(
            chain!(
@@ -38,6 +37,7 @@ named!(func_expr<Expression>,
                multispace? ~
                ty: function_type ~
                multispace? ~
+               tag!("=") ~
                e: expr ~
                multispace? ~
                after: expr,
@@ -89,10 +89,10 @@ named!(let_expr<Expression>,
 named!(sequence_expr<Expression>,
     chain!(
         multispace? ~
-        mut acc: if_expr ~
+        mut acc: equal ~
         multispace? ~
         many0!(
-            tap!(a: preceded!(tag!(";"), if_expr) => acc = Expression::Apply(box Expression::Closure("_".to_string(), box Type::Primitive("unit".to_string()), box acc), box a.clone())
+            tap!(a: preceded!(tag!(";"), equal) => acc = Expression::Apply(box Expression::Closure("_".to_string(), box Type::Primitive("int".to_string()), box acc), box a.clone())
                 )
             ) ~
         multispace?,
