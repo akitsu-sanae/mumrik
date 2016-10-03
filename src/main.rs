@@ -1,44 +1,39 @@
-
-#![feature(box_syntax)]
 #![feature(box_patterns)]
-
-use std::io;
-use std::io::Write;
-use std::io::Read;
-use std::io::stdout;
-use std::fs::File;
+#![feature(box_syntax)]
 
 #[macro_use]
 extern crate nom;
 
-mod ast;
+mod expr;
+mod context;
 mod parser;
-mod eval;
-mod tpe;
 
 #[cfg(test)]
 mod test;
 
-use parser::expression;
-use ast::Expression;
-use tpe::Type;
+use std::io;
+use std::io::Read;
+use std::io::Write;
+use std::fs::File;
+use context::Context;
+
+use nom::IResult;
 
 fn main() {
-    println!("    \u{001B}[34m-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
-    println!("             Mumrik   version 0.0.1             ");
-    println!("    \u{001B}[34m-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
+    println!("\u{001B}[34m-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
+    println!("    Mumrik version 0.0.1 by akitsu-sanae");
+    println!("\u{001B}[34m-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
     println!("");
+
     loop {
         print!("# ");
-        stdout().flush().unwrap();
+        io::stdout().flush().unwrap();
         let mut line = String::new();
         io::stdin().read_line(&mut line).unwrap();
 
         match line.as_str().trim() {
             "quit" => return,
-            "help" => {
-                println!("how to use")
-            },
+            "help" => print_help(),
             "load" => {
                 print!("filename: ");
                 io::stdout().flush().unwrap();
@@ -47,7 +42,7 @@ fn main() {
                 let mut src = String::new();
                 File::open(filename.as_str().trim()).and_then(|mut f| {
                     f.read_to_string(&mut src)
-                }).expect("not such file");
+                }).expect("no such file");
                 exec(src)
             },
             _ => exec(line),
@@ -56,20 +51,22 @@ fn main() {
 }
 
 fn exec(src: String) {
-    let ast = expression(src.as_bytes());
-    let ty = tpe::check(&ast, &vec![]);
-    match ty {
-        Type::Error(msg) =>
-            println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
-        _ => {
-            println!("type: {:?}", ty);
-            let expr = eval::eval(&ast, &vec![]);
-            match expr {
-                Expression::Error(msg) =>
-                    println!("\u{001B}[31mtype error\u{001B}[39m: {}", msg),
-                _ => println!("value: {:?}", expr),
-            }
+    let expr = parser::expr(src.as_bytes());
+    match expr {
+        IResult::Done(_, e) => {
+            println!("expr: {:?}", e);
+            println!("value: {:?}", e.eval(&Context::new()));
         },
+        _ => println!("\u{001B}[31mparsing fail ...\u{001B}[39m"),
     }
+}
+
+fn print_help() {
+    println!("\u{001B}[32m-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    println!("    quit ... quit this interpreter");
+    println!("    help ... print help like this!");
+    println!("    load ... load file, and execute it as mumrik code");
+    println!("    otherwise ... execute line as mumrik code");
+    println!("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\u{001B}[39m");
 }
 
