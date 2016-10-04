@@ -65,12 +65,24 @@ named!(mult_expr <Expr>, chain!(
 
 named!(apply_expr <Expr>, chain!(
         multispace? ~
+        mut acc: dot_expr ~
+        multispace? ~
+        many0!(
+              tap!(e: preceded!(tag!("@"), dot_expr) => acc = Expr::Apply(box acc, box e.clone()))) ~
+        multispace?,
+        || acc));
+
+
+named!(dot_expr <Expr>, chain!(
+        multispace? ~
         mut acc: factor ~
         multispace? ~
         many0!(
-              tap!(e: preceded!(tag!("@"), factor) => acc = Expr::Apply(box acc, box e.clone()))) ~
+              tap!(label: preceded!(tag!("."), identifier) => acc = Expr::Dot(box acc, label.clone()))
+              ) ~
         multispace?,
-        || acc));
+        || acc
+        ));
 
 named!(factor <Expr>, alt!(
         lambda_expr |

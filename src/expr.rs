@@ -19,6 +19,7 @@ pub enum Expr {
     Mult(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Product(Vec<(String, Box<Expr>)>),
+    Dot(Box<Expr>, String),
     Variant(String, Box<Expr>, Box<Type>),
 }
 
@@ -89,6 +90,21 @@ impl Expr {
                 match (e1.eval(context), e2.eval(context)) {
                     (Expr::Number(l), Expr::Number(r)) => Expr::Number(l/r),
                     _ => panic!("can not unnumeric values"),
+                }
+            },
+            &Expr::Dot(box ref e, ref label) => {
+                match e.eval(context) {
+                    Expr::Product(v) => {
+                        let found = v.iter().find(|e| {
+                            e.0 == label.clone()
+                        });
+                        if let Some(branch) = found {
+                            *branch.1.clone()
+                        } else {
+                            panic!("not found such filed in {:?} : {}", e, label)
+                        }
+                    },
+                    _ => panic!("can not apply dot operator for non product expr")
                 }
             },
             &Expr::Var(ref name) => context.lookup_expr(name),
@@ -197,6 +213,22 @@ impl Expr {
                         }
                     },
                     _ => panic!("variant type specifier must be variant type")
+                }
+            },
+            // ([* hoge = 1, fuga = 3] as [+ hoge: Int, fuga: Int]).hoge
+            &Expr::Dot(box ref e, ref label) => {
+                match e.eval(context) {
+                    &Expr::Product(ref v) => {
+                        let found = v.iter().find(|e| {
+                            e.0 == label.clone()
+                        });
+                        if let Some(branch) = found {
+                            branch.1.type_of(context)
+                        } else {
+                            panic!("not found such filed in {:?} : {}", e, label)
+                        }
+                    },
+                    _ => panic!("can not apply dot operator for non product expr")
                 }
             },
         }
