@@ -18,6 +18,8 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mult(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
+    Product(Vec<(String, Box<Expr>)>),
+    Variant(String, Box<Expr>, Box<Type>),
 }
 
 impl Expr {
@@ -170,7 +172,33 @@ impl Expr {
                     },
                     _ => panic!("can not ass non numeric values")
                 }
-            }
+            },
+            &Expr::Product(ref v) => {
+                Type::Product(v.iter().map(|e| {
+                    (e.0.clone(), box e.1.type_of(context))
+                }).collect())
+            },
+            // [+ tag = e] as ty
+            &Expr::Variant(ref tag, box ref e, box ref ty) => {
+                match ty {
+                    &Type::Variant(ref v) => {
+                        let found = v.iter().find(|e|{
+                            e.0 == tag.clone()
+                        });
+                        if let Some(branch) = found {
+                            let e_ty = e.type_of(context);
+                            if e_ty == *branch.1 {
+                                ty.clone()
+                            } else {
+                                panic!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, ty, branch.1)
+                            }
+                        } else {
+                            panic!("not found such tag {} in variant {:?}", tag, ty)
+                        }
+                    },
+                    _ => panic!("variant type specifier must be variant type")
+                }
+            },
         }
     }
 
@@ -179,6 +207,8 @@ impl Expr {
             &Expr::Number(_) | &Expr::Bool(_) => true,
             &Expr::Unit => true,
             &Expr::Lambda(_, _, _) => true,
+            &Expr::Product(_) => true,
+            &Expr::Variant(_, _, _) => true,
             _ => false,
         }
     }

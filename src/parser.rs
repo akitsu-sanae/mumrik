@@ -78,6 +78,8 @@ named!(factor <Expr>, alt!(
         boolean |
         unit |
         variable |
+        product |
+        variant |
         paren
         ));
 
@@ -115,13 +117,102 @@ named!(number <Expr>,
 named!(variable <Expr>,
        map!(identifier, |s: String| Expr::Var(s.clone())));
 
+// [* first = 1, second = 114]
+named!(product <Expr>, chain!(
+        tag!("[*") ~
+        multispace? ~
+        mut branches: map!(branch, |e| vec![e]) ~
+        multispace? ~
+        many0!(
+            tap!(e: preceded!(tag!(","), branch) => {
+                branches.push(e.clone());
+                branches.clone()
+            })
+        ) ~
+        multispace? ~
+        tag!("]") ~
+        multispace?,
+        || Expr::Product(branches.clone())));
+
+// [+ first = cond ] as [+ first: Int, second: Bool]
+named!(variant <Expr>, chain!(
+        tag!("[+") ~
+        multispace? ~
+        br: branch ~
+        multispace? ~
+        tag!("]") ~
+        multispace? ~
+        tag!("as") ~
+        multispace? ~
+        ty: variant_type ~
+        multispace?,
+        || Expr::Variant(br.0.clone(), br.1.clone(), box ty)
+        ));
+
+named!(branch <(String, Box<Expr>)>, chain!(
+        multispace? ~
+        label: identifier ~
+        multispace? ~
+        tag!("=") ~
+        e: expr ~
+        multispace?,
+        || (label, box e)));
+
 named!(paren <Expr>, chain!(
         tag!("(") ~
         e: expr ~
         tag!(")"),
         || e));
 
-named!(type_ <Type>,
+named!(type_ <Type>, alt!(
+        variant_type |
+        product_type |
+        primitive_type));
+
+named!(type_branch <(String, Box<Type>)>, chain!(
+    multispace? ~
+    label: identifier ~
+    multispace? ~
+    tag!(":") ~
+    multispace? ~
+    ty: type_ ~
+    multispace?,
+    || (label, box ty)));
+
+named!(variant_type <Type>, chain!(
+        multispace? ~
+        tag!("[+") ~
+        multispace? ~
+        mut branches: map!(type_branch, |e| vec![e]) ~
+        multispace? ~
+        many0!(
+              tap!(e: preceded!(tag!(","), type_branch) => {
+                  branches.push(e.clone());
+                  branches.clone()
+              })) ~
+        multispace? ~
+        tag!("]") ~
+        multispace?,
+        || Type::Variant(branches)
+        ));
+
+named!(product_type <Type>, chain!(
+        tag!("[*") ~
+        multispace? ~
+        mut branches: map!(type_branch, |e| vec![e]) ~
+        multispace? ~
+        many0!(
+              tap!(e: preceded!(tag!(","), type_branch) => {
+                  branches.push(e.clone());
+                  branches.clone()
+              })
+        ) ~
+        multispace? ~
+        tag!("]") ~
+        multispace?,
+        || Type::Product(branches)));
+
+named!(primitive_type <Type>,
        map!(identifier, |s: String| Type::Primitive(s)));
 
 named!(identifier <String>,
