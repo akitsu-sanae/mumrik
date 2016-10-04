@@ -22,8 +22,33 @@ named!(if_expr <Expr>, alt!(
             tr: expr ~
             fl: expr,
             || Expr::If(box cond, box tr, box fl)) |
-        apply_expr));
+        add_expr));
 
+named!(add_expr <Expr>, chain!(
+        multispace? ~
+        mut acc: mult_expr ~
+        multispace? ~
+        many0!(
+            alt!(
+            tap!(e: preceded!(tag!("+"), mult_expr) => acc = Expr::Add(box acc, box e.clone())) |
+            tap!(e: preceded!(tag!("-"), mult_expr) => acc = Expr::Sub(box acc, box e.clone()))
+                )
+              ) ~
+        multispace?,
+        || acc));
+
+named!(mult_expr <Expr>, chain!(
+        multispace? ~
+        mut acc: apply_expr ~
+        multispace? ~
+        many0!(
+            alt!(
+                tap!(e: preceded!(tag!("*"), apply_expr) => acc = Expr::Mult(box acc, box e.clone())) |
+
+                tap!(e: preceded!(tag!("/"), apply_expr) => acc = Expr::Div(box acc, box e.clone())))
+            ) ~
+        multispace?,
+        || acc));
 
 named!(apply_expr <Expr>, chain!(
         multispace? ~

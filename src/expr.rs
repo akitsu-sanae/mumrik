@@ -12,6 +12,10 @@ pub enum Expr {
     Apply(Box<Expr>, Box<Expr>),
     Sequence(Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    Add(Box<Expr>, Box<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    Mult(Box<Expr>, Box<Expr>),
+    Div(Box<Expr>, Box<Expr>),
 }
 
 impl Expr {
@@ -43,6 +47,30 @@ impl Expr {
                         }
                     },
                     _ => panic!("if condition must be bool: {:?}", cond),
+                }
+            },
+            &Expr::Add(box ref e1, box ref e2) => {
+                match (e1.eval(context), e2.eval(context)) {
+                    (Expr::Number(l), Expr::Number(r)) => Expr::Number(l+r),
+                    _ => panic!("can not unnumeric values"),
+                }
+            },
+            &Expr::Sub(box ref e1, box ref e2) => {
+                match (e1.eval(context), e2.eval(context)) {
+                    (Expr::Number(l), Expr::Number(r)) => Expr::Number(l-r),
+                    _ => panic!("can not unnumeric values"),
+                }
+            },
+            &Expr::Mult(box ref e1, box ref e2) => {
+                match (e1.eval(context), e2.eval(context)) {
+                    (Expr::Number(l), Expr::Number(r)) => Expr::Number(l*r),
+                    _ => panic!("can not unnumeric values"),
+                }
+            },
+            &Expr::Div(box ref e1, box ref e2) => {
+                match (e1.eval(context), e2.eval(context)) {
+                    (Expr::Number(l), Expr::Number(r)) => Expr::Number(l/r),
+                    _ => panic!("can not unnumeric values"),
                 }
             },
             &Expr::Var(ref name) => context.lookup_expr(name),
@@ -99,6 +127,21 @@ impl Expr {
                     _ => panic!("if condition must be Bool")
                 }
             },
+            &Expr::Add(box ref e1, box ref e2) |
+            &Expr::Sub(box ref e1, box ref e2) |
+            &Expr::Mult(box ref e1, box ref e2) |
+            &Expr::Div(box ref e1, box ref e2) => {
+                match (e1.type_of(context), e2.type_of(context)) {
+                    (Type::Primitive(l), Type::Primitive(r)) => {
+                        if l == r  && l == "Int".to_string() {
+                            Type::Primitive("Int".to_string())
+                        } else {
+                            panic!("can not add non numeric values")
+                        }
+                    },
+                    _ => panic!("can not ass non numeric values")
+                }
+            }
         }
     }
 
