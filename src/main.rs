@@ -7,6 +7,7 @@ extern crate nom;
 mod expr;
 mod context;
 mod parser;
+mod type_;
 
 #[cfg(test)]
 mod test;
@@ -55,6 +56,7 @@ fn exec(src: String) {
     match expr {
         IResult::Done(_, e) => {
             println!("expr: {:?}", e);
+            println!("type: {:?}", e.type_of(&Context::new()));
             println!("value: {:?}", e.eval(&Context::new()));
         },
         _ => println!("\u{001B}[31mparsing fail ...\u{001B}[39m"),

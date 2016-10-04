@@ -3,6 +3,7 @@ use std::i64;
 use nom::*;
 
 use expr::Expr;
+use type_::Type;
 
 named!(pub expr<Expr>, chain!(
         multispace? ~
@@ -42,16 +43,20 @@ named!(factor <Expr>, alt!(
         paren
         ));
 
-// func x => x
+// func x: Int => x
 named!(lambda_expr <Expr>, chain!(
         tag!("func") ~
         multispace? ~
         name: identifier ~
         multispace? ~
+        tag!(":") ~
+        multispace? ~
+        ty: type_ ~
+        multispace? ~
         tag!("=>") ~
         body: expr ~
         multispace?,
-        || Expr::Lambda(name, box body)
+        || Expr::Lambda(name, box ty, box body)
         ));
 
 named!(boolean <Expr>, alt!(
@@ -78,6 +83,8 @@ named!(paren <Expr>, chain!(
         tag!(")"),
         || e));
 
+named!(type_ <Type>,
+       map!(identifier, |s: String| Type::Primitive(s)));
 
 named!(identifier <String>,
        map!(
