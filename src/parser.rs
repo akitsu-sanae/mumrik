@@ -90,7 +90,7 @@ named!(factor <Expr>, alt!(
         boolean |
         unit |
         variable |
-        product |
+        record |
         variant |
         paren
         ));
@@ -130,7 +130,7 @@ named!(variable <Expr>,
        map!(identifier, |s: String| Expr::Var(s.clone())));
 
 // [* first = 1, second = 114]
-named!(product <Expr>, chain!(
+named!(record <Expr>, chain!(
         tag!("[*") ~
         multispace? ~
         mut branches: map!(branch, |e| vec![e]) ~
@@ -144,7 +144,7 @@ named!(product <Expr>, chain!(
         multispace? ~
         tag!("]") ~
         multispace?,
-        || Expr::Product(branches.clone())));
+        || Expr::Record(branches.clone())));
 
 // [+ first = cond ] as [+ first: Int, second: Bool]
 named!(variant <Expr>, chain!(
@@ -178,7 +178,7 @@ named!(paren <Expr>, chain!(
 
 named!(type_ <Type>, alt!(
         variant_type |
-        product_type |
+        record_type |
         primitive_type));
 
 named!(type_branch <(String, Box<Type>)>, chain!(
@@ -208,7 +208,7 @@ named!(variant_type <Type>, chain!(
         || Type::Variant(branches)
         ));
 
-named!(product_type <Type>, chain!(
+named!(record_type <Type>, chain!(
         tag!("[*") ~
         multispace? ~
         mut branches: map!(type_branch, |e| vec![e]) ~
@@ -222,7 +222,7 @@ named!(product_type <Type>, chain!(
         multispace? ~
         tag!("]") ~
         multispace?,
-        || Type::Product(branches)));
+        || Type::Record(branches)));
 
 named!(primitive_type <Type>,
        map!(identifier, |s: String| Type::Primitive(s)));

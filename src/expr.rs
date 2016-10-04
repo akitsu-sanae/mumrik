@@ -18,7 +18,7 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mult(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
-    Product(Vec<(String, Box<Expr>)>),
+    Record(Vec<(String, Box<Expr>)>),
     Dot(Box<Expr>, String),
     Variant(String, Box<Expr>, Box<Type>),
 }
@@ -94,7 +94,7 @@ impl Expr {
             },
             &Expr::Dot(box ref e, ref label) => {
                 match e.eval(context) {
-                    Expr::Product(v) => {
+                    Expr::Record(v) => {
                         let found = v.iter().find(|e| {
                             e.0 == label.clone()
                         });
@@ -104,7 +104,7 @@ impl Expr {
                             panic!("not found such filed in {:?} : {}", e, label)
                         }
                     },
-                    _ => panic!("can not apply dot operator for non product expr")
+                    _ => panic!("can not apply dot operator for non record")
                 }
             },
             &Expr::Var(ref name) => context.lookup_expr(name),
@@ -189,8 +189,8 @@ impl Expr {
                     _ => panic!("can not ass non numeric values")
                 }
             },
-            &Expr::Product(ref v) => {
-                Type::Product(v.iter().map(|e| {
+            &Expr::Record(ref v) => {
+                Type::Record(v.iter().map(|e| {
                     (e.0.clone(), box e.1.type_of(context))
                 }).collect())
             },
@@ -218,7 +218,7 @@ impl Expr {
             // ([* hoge = 1, fuga = 3] as [+ hoge: Int, fuga: Int]).hoge
             &Expr::Dot(box ref e, ref label) => {
                 match e.eval(context) {
-                    &Expr::Product(ref v) => {
+                    Expr::Record(v) => {
                         let found = v.iter().find(|e| {
                             e.0 == label.clone()
                         });
@@ -228,7 +228,7 @@ impl Expr {
                             panic!("not found such filed in {:?} : {}", e, label)
                         }
                     },
-                    _ => panic!("can not apply dot operator for non product expr")
+                    _ => panic!("can not apply dot operator for non record")
                 }
             },
         }
@@ -239,7 +239,7 @@ impl Expr {
             &Expr::Number(_) | &Expr::Bool(_) => true,
             &Expr::Unit => true,
             &Expr::Lambda(_, _, _) => true,
-            &Expr::Product(_) => true,
+            &Expr::Record(_) => true,
             &Expr::Variant(_, _, _) => true,
             _ => false,
         }
