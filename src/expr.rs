@@ -12,6 +12,8 @@ pub enum Expr {
     Apply(Box<Expr>, Box<Expr>),
     Sequence(Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    Equal(Box<Expr>, Box<Expr>),
+    NotEqual(Box<Expr>, Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
     Mult(Box<Expr>, Box<Expr>),
@@ -47,6 +49,20 @@ impl Expr {
                         }
                     },
                     _ => panic!("if condition must be bool: {:?}", cond),
+                }
+            },
+            &Expr::Equal(box ref e1, box ref e2) => {
+                match (e1.eval(context), e2.eval(context)) {
+                    (Expr::Number(l), Expr::Number(r)) => Expr::Bool(l == r),
+                    (Expr::Bool(l), Expr::Bool(r)) => Expr::Bool(l == r),
+                    _ => panic!("can not {:?} = {:?}", e1, e2)
+                }
+            },
+            &Expr::NotEqual(box ref e1, box ref e2) => {
+                match (e1.eval(context), e2.eval(context)) {
+                    (Expr::Number(l), Expr::Number(r)) => Expr::Bool(l != r),
+                    (Expr::Bool(l), Expr::Bool(r)) => Expr::Bool(l != r),
+                    _ => panic!("can not {:?} = {:?}", e1, e2)
                 }
             },
             &Expr::Add(box ref e1, box ref e2) => {
@@ -125,6 +141,19 @@ impl Expr {
                         }
                     },
                     _ => panic!("if condition must be Bool")
+                }
+            },
+            &Expr::Equal(box ref e1, box ref e2) |
+            &Expr::NotEqual(box ref e1, box ref e2) => {
+                match (e1.type_of(context), e2.type_of(context)) {
+                    (Type::Primitive(l), Type::Primitive(r)) => {
+                        if l == r {
+                            Type::Primitive("Bool".to_string())
+                        } else {
+                            panic!("unmatch types : {:?} and {:?}", l, r)
+                        }
+                    },
+                    _ => panic!("non primitive value!!"),
                 }
             },
             &Expr::Add(box ref e1, box ref e2) |

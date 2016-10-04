@@ -22,7 +22,20 @@ named!(if_expr <Expr>, alt!(
             tr: expr ~
             fl: expr,
             || Expr::If(box cond, box tr, box fl)) |
-        add_expr));
+        equal_expr));
+
+named!(equal_expr <Expr>, chain!(
+        multispace? ~
+        mut acc: add_expr ~
+        multispace? ~
+        many0!(
+              alt!(
+                  tap!(e: preceded!(tag!("="), add_expr) => acc = Expr::Equal(box acc, box e.clone())) |
+                  tap!(e: preceded!(tag!("/="), add_expr) => acc = Expr::NotEqual(box acc, box e.clone()))
+                  )
+              ) ~
+        multispace?,
+        || acc));
 
 named!(add_expr <Expr>, chain!(
         multispace? ~
