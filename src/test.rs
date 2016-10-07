@@ -67,6 +67,17 @@ fn record() {
 }
 
 #[test]
+fn dot() {
+    let e = expr(b"[* id=42, value=123].id").unwrap().1;
+    assert_eq!(e, Expr::Dot(
+            box Expr::Record(vec![
+                ("id".to_string(), box Expr::Number(42)),
+                ("value".to_string(), box Expr::Number(123))]),
+            "id".to_string()));
+    assert_eq!(e.eval(&Context::new()), Expr::Number(42));
+}
+
+#[test]
 fn variant() {
     let e = expr(b"[+ hoge=1] as [+ hoge:Int, fuga: Bool]").unwrap().1;
     assert_eq!(e, Expr::Variant(
