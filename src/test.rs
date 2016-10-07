@@ -66,3 +66,23 @@ fn record() {
         ("value".to_string(), box Expr::Number(123))]));
 }
 
+#[test]
+fn variant() {
+    let e = expr(b"[+ hoge=1] as [+ hoge:Int, fuga: Bool]").unwrap().1;
+    assert_eq!(e, Expr::Variant(
+            "hoge".to_string(),
+            box Expr::Number(1),
+            box Type::Variant(vec![
+                ("hoge".to_string(), box Type::Primitive("Int".to_string())),
+                ("fuga".to_string(), box Type::Primitive("Bool".to_string()))
+                ])));
+    assert_eq!(e.eval(&Context::new()), Expr::Variant(
+            "hoge".to_string(),
+            box Expr::Number(1),
+            box Type::Variant(vec![
+                              ("hoge".to_string(), box Type::Primitive("Int".to_string())),
+                              ("fuga".to_string(), box Type::Primitive("Bool".to_string()))
+                              ])));
+
+}
+
