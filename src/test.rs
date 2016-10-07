@@ -55,4 +55,14 @@ fn arithmetic() {
     assert_eq!(e.eval(&Context::new()), Expr::Number(17))
 }
 
+#[test]
+fn record() {
+    let e = expr(b"[* id=42, value=123]").unwrap().1;
+    assert_eq!(e, Expr::Record(vec![
+        ("id".to_string(), box Expr::Number(42)),
+        ("value".to_string(), box Expr::Number(123))]));
+    assert_eq!(e.eval(&Context::new()), Expr::Record(vec![
+        ("id".to_string(), box Expr::Number(42)),
+        ("value".to_string(), box Expr::Number(123))]));
+}
 
