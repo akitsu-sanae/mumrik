@@ -42,3 +42,17 @@ fn if_() {
     assert_eq!(e.eval(&Context::new()), Expr::Number(1));
 }
 
+#[test]
+fn arithmetic() {
+    let e = expr(b"1+2*5+6").unwrap().1;
+    assert_eq!(e, Expr::Add(
+            box Expr::Add(
+                box Expr::Number(1),
+                box Expr::Mult(
+                    box Expr::Number(2),
+                    box Expr::Number(5))),
+            box Expr::Number(6)));
+    assert_eq!(e.eval(&Context::new()), Expr::Number(17))
+}
+
+
