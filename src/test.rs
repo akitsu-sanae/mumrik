@@ -97,3 +97,27 @@ fn variant() {
 
 }
 
+#[test]
+fn match_() {
+    let e = expr(b"match [+ hoge=1] as [+ hoge:Int, fuga: Bool] { hoge x => x+1, fuga x => if x 100 200 }").unwrap().1;
+    assert_eq!(e, Expr::Match(
+            box Expr::Variant(
+                "hoge".to_string(),
+                box Expr::Number(1),
+                box Type::Variant(vec![
+                                  ("hoge".to_string(), box Type::Primitive("Int".to_string())),
+                                  ("fuga".to_string(), box Type::Primitive("Bool".to_string()))
+                                  ])),
+            vec![
+            ("hoge".to_string(), "x".to_string(),
+            box Expr::Add(
+                box Expr::Var("x".to_string()),
+                box Expr::Number(1))),
+            ("fuga".to_string(), "x".to_string(),
+            box Expr::If(
+                box Expr::Var("x".to_string()),
+                box Expr::Number(100),
+                box Expr::Number(200)))]));
+    assert_eq!(e.eval(&Context::new()), Expr::Number(2));
+}
+
