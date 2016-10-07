@@ -26,6 +26,7 @@ pub enum Expr {
     //     Fuga x => x * 3,
     // }
     Match(Box<Expr>, Vec<(String, String, Box<Expr>)>),
+    TypeAlias(String, Box<Type>, Box<Expr>),
 }
 
 impl Expr {
@@ -118,14 +119,6 @@ impl Expr {
                         let found = branches.iter().find(|br| {
                             label.clone() == br.0
                         });
-                        let ty = match ty {
-                            &Type::Variant(ref v) => {
-                                v.iter().find(|x| {
-                                    x.0 == label.clone()
-                                })
-                            },
-                            _ => panic!("nyan"),
-                        }.unwrap();
                         if let Some(branch) = found {
                             let new_context = context.add_expr(&branch.1, e);
                             branch.2.eval(&new_context)
@@ -136,6 +129,7 @@ impl Expr {
                     _ => panic!("can not apply match operator for non variant"),
                 }
             },
+            &Expr::TypeAlias(_, _, box ref e) => e.eval(context),
             &Expr::Var(ref name) => context.lookup_expr(name),
             _ => self.clone(),
         }
@@ -148,7 +142,8 @@ impl Expr {
             &Expr::Unit => Type::Primitive("Unit".to_string()),
             &Expr::Var(ref name) => context.lookup_type(name),
             &Expr::Lambda(ref name, box ref ty, box ref e) => {
-                let new_context = context.add_type(name, ty);
+                let ty = Expr::desugar_type(ty, context);
+                let new_context = context.add_type(name, &ty);
                 let ret_ty = e.type_of(&new_context);
                 Type::Function(box ty.clone(), box ret_ty)
             },
@@ -225,14 +220,14 @@ impl Expr {
             },
             // [+ tag = e] as ty
             &Expr::Variant(ref tag, box ref e, box ref ty) => {
-                match ty {
-                    &Type::Variant(ref v) => {
+                match Expr::desugar_type(ty, context) {
+                    Type::Variant(v) => {
                         let found = v.iter().find(|e|{
                             e.0 == tag.clone()
                         });
                         if let Some(branch) = found {
                             let e_ty = e.type_of(context);
-                            if e_ty == *branch.1 {
+                            if e_ty == Expr::desugar_type(&*branch.1, context) {
                                 ty.clone()
                             } else {
                                 panic!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, ty, branch.1)
@@ -261,6 +256,10 @@ impl Expr {
                 }
             },
             &Expr::Match(box ref e, ref branches) => Expr::match_typecheck(e, branches, context),
+            &Expr::TypeAlias(ref name, box ref ty, box ref e) => {
+                let new_context = context.add_type_alias(name, ty);
+                e.type_of(&new_context)
+            },
         }
     }
 
@@ -272,8 +271,8 @@ impl Expr {
     {
         let expr_branches = match e {
             &Expr::Variant(_, _, box ref ty) => {
-                match ty {
-                    &Type::Variant(ref v) => v.clone(),
+                match Expr::desugar_type(ty, context) {
+                    Type::Variant(v) => v.clone(),
                     _ => panic!("type error variant expr must have variant type"),
                 }
             },
@@ -288,7 +287,7 @@ impl Expr {
             let body_branch: &(String, String, Box<Expr>) = branches.iter().find(|x| {
                 x.0 == label
             }).unwrap();
-            let new_context = context.add_type(&body_branch.1, &*expr_branch.1);
+            let new_context = context.add_type(&body_branch.1, &Expr::desugar_type(&*expr_branch.1, context));
             ret_types.push(body_branch.2.type_of(&new_context));
         }
         if ret_types.iter().all(|x| {
@@ -299,6 +298,19 @@ impl Expr {
             panic!("can not much all match return types")
         }
      }
+
+    fn desugar_type(ty: &Type, context: &Context) -> Type {
+        match ty {
+            &Type::Primitive(ref x) => {
+                if let Some(ty) = context.lookup_type_alias(x) {
+                    ty
+                } else {
+                    ty.clone()
+                }
+            },
+            _ => ty.clone()
+        }
+    }
 
     fn is_value(&self) -> bool {
         match self {

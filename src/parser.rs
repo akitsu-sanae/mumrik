@@ -7,12 +7,28 @@ use type_::Type;
 
 named!(pub expr<Expr>, chain!(
         multispace? ~
-        mut acc: if_expr ~
+        mut acc: type_alias ~
         multispace? ~
         many0!(
               tap!(e: preceded!(tag!(";"), expr) => acc = Expr::Sequence(box acc, box e.clone()))) ~
         multispace?,
         || acc));
+
+named!(type_alias <Expr>, alt!(
+        chain!(
+            multispace? ~
+            tag!("type") ~
+            multispace? ~
+            name: identifier ~
+            multispace? ~
+            tag!(":") ~
+            multispace? ~
+            ty: type_ ~
+            multispace? ~
+            e: expr ~
+            multispace?,
+            || Expr::TypeAlias(name, box ty, box e)) |
+        if_expr));
 
 named!(if_expr <Expr>, alt!(
         chain!(
@@ -193,7 +209,7 @@ named!(variant <Expr>, chain!(
         multispace? ~
         tag!("as") ~
         multispace? ~
-        ty: variant_type ~
+        ty: type_ ~
         multispace?,
         || Expr::Variant(br.0.clone(), br.1.clone(), box ty)
         ));
