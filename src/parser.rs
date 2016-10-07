@@ -22,6 +22,43 @@ named!(if_expr <Expr>, alt!(
             tr: expr ~
             fl: expr,
             || Expr::If(box cond, box tr, box fl)) |
+        match_expr));
+
+named!(match_branch <(String, String, Box<Expr>)>,
+    chain!(
+        multispace? ~
+        label: identifier ~
+        multispace? ~
+        name: identifier ~
+        multispace? ~
+        tag!("=>") ~
+        multispace? ~
+        e: expr ~
+        multispace?,
+        || (label, name, box e)));
+
+named!(match_expr <Expr>, alt!(
+        chain!(
+            multispace? ~
+            tag!("match") ~
+            multispace? ~
+            e: expr ~
+            multispace? ~
+            tag!("{") ~
+            multispace? ~
+            branches: chain!(
+                mut acc: map!(match_branch, |x| vec![x]) ~
+                multispace? ~
+                many0!(
+                      tap!(b: preceded!(tag!(","), match_branch) => acc.push(b.clone()))
+                ) ~
+                multispace?,
+                || acc) ~
+            multispace? ~
+            tag!("}") ~
+            multispace?,
+            || Expr::Match(box e, branches)
+            ) |
         equal_expr));
 
 named!(equal_expr <Expr>, chain!(

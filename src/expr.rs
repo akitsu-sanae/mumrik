@@ -21,6 +21,11 @@ pub enum Expr {
     Record(Vec<(String, Box<Expr>)>),
     Dot(Box<Expr>, String),
     Variant(String, Box<Expr>, Box<Type>),
+    // match expr {
+    //     Hoge x => x + 1,
+    //     Fuga x => x * 3,
+    // }
+    Match(Box<Expr>, Vec<(String, String, Box<Expr>)>),
 }
 
 impl Expr {
@@ -105,6 +110,30 @@ impl Expr {
                         }
                     },
                     _ => panic!("can not apply dot operator for non record")
+                }
+            },
+            &Expr::Match(box ref e, ref branches) => {
+                match e {
+                    &Expr::Variant(ref label, box ref e, box ref ty) => {
+                        let found = branches.iter().find(|br| {
+                            label.clone() == br.0
+                        });
+                        let ty = match ty {
+                            &Type::Variant(ref v) => {
+                                v.iter().find(|x| {
+                                    x.0 == label.clone()
+                                })
+                            },
+                            _ => panic!("nyan"),
+                        }.unwrap();
+                        if let Some(branch) = found {
+                            let new_context = context.add_expr(&branch.1, e);
+                            branch.2.eval(&new_context)
+                        } else {
+                            panic!("can not find such label in {:?}: {}", ty, label)
+                        }
+                    },
+                    _ => panic!("can not apply match operator for non variant"),
                 }
             },
             &Expr::Var(ref name) => context.lookup_expr(name),
@@ -231,8 +260,45 @@ impl Expr {
                     _ => panic!("can not apply dot operator for non record")
                 }
             },
+            &Expr::Match(box ref e, ref branches) => Expr::match_typecheck(e, branches, context),
         }
     }
+
+
+    fn match_typecheck(
+        e: &Expr,
+        branches: &Vec<(String, String, Box<Expr>)>,
+        context: &Context) -> Type
+    {
+        let expr_branches = match e {
+            &Expr::Variant(_, _, box ref ty) => {
+                match ty {
+                    &Type::Variant(ref v) => v.clone(),
+                    _ => panic!("type error variant expr must have variant type"),
+                }
+            },
+            _ => panic!("type error: can not match for non variant expr"),
+        };
+        let labels: Vec<_> = branches.iter().map(|x| x.0.clone()).collect();
+        let mut ret_types = vec![];
+        for label in labels {
+            let expr_branch: &(String, Box<Type>) = expr_branches.iter().find(|x| {
+                x.0 == label
+            }).unwrap();
+            let body_branch: &(String, String, Box<Expr>) = branches.iter().find(|x| {
+                x.0 == label
+            }).unwrap();
+            let new_context = context.add_type(&body_branch.1, &*expr_branch.1);
+            ret_types.push(body_branch.2.type_of(&new_context));
+        }
+        if ret_types.iter().all(|x| {
+            x.clone() == ret_types[0]
+        }) {
+            ret_types[0].clone()
+        } else {
+            panic!("can not much all match return types")
+        }
+     }
 
     fn is_value(&self) -> bool {
         match self {
