@@ -1,4 +1,5 @@
 use expr::Expr;
+use type_::Type;
 use context::Context;
 use parser::expr;
 
@@ -13,9 +14,9 @@ fn literal() {
 
 #[test]
 fn apply() {
-    let e = expr(b"(func x => x)@1").unwrap().1;
+    let e = expr(b"(func x: Int => x)@1").unwrap().1;
     assert_eq!(e, Expr::Apply(
-            box Expr::Lambda("x".to_string(), box Expr::Var("x".to_string())),
+            box Expr::Lambda("x".to_string(), box Type::Primitive("Int".to_string()), box Expr::Var("x".to_string())),
             box Expr::Number(1)));
     assert_eq!(e.eval(&Context::new()), Expr::Number(1));
 }
