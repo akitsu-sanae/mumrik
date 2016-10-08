@@ -5,7 +5,26 @@ use nom::*;
 use expr::Expr;
 use type_::Type;
 
-named!(pub expr<Expr>, chain!(
+
+named!(pub expr<Expr>, alt!(
+        chain!(
+            multispace? ~
+            tag!("let") ~
+            multispace? ~
+            name: identifier ~
+            multispace? ~
+            tag!("=") ~
+            multispace? ~
+            init: type_alias ~
+            multispace? ~
+            tag!(";") ~
+            multispace? ~
+            after: expr ~
+            multispace?,
+            || Expr::Let(name, box init, box after)) |
+        sequence_expr));
+
+named!(sequence_expr<Expr>, chain!(
         multispace? ~
         mut acc: type_alias ~
         multispace? ~

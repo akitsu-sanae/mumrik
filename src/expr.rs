@@ -11,6 +11,7 @@ pub enum Expr {
     Lambda(String, Box<Type>, Box<Expr>),
     Apply(Box<Expr>, Box<Expr>),
     Sequence(Box<Expr>, Box<Expr>),
+    Let(String, Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Equal(Box<Expr>, Box<Expr>),
     NotEqual(Box<Expr>, Box<Expr>),
@@ -42,6 +43,10 @@ impl Expr {
                         Expr::Apply(box f.clone(), box arg.eval(context)).eval(context),
                     _ => Expr::Apply(box f.eval(context), box arg.clone()).eval(context),
                 }
+            },
+            &Expr::Let(ref name, box ref init, box ref after) => {
+                let new_context = context.add_expr(name, init);
+                after.eval(&new_context)
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 Expr::Apply(
@@ -159,6 +164,10 @@ impl Expr {
                     },
                     _ => panic!("can not apply to non functional type")
                 }
+            },
+            &Expr::Let(ref name, box ref init, box ref after) => {
+                let new_context = context.add_type(name, &init.type_of(context));
+                after.type_of(&new_context)
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 if e1.type_of(context) == Type::Primitive("Unit".to_string()) {
