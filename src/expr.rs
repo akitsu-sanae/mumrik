@@ -28,6 +28,7 @@ pub enum Expr {
     // }
     Match(Box<Expr>, Vec<(String, String, Box<Expr>)>),
     TypeAlias(String, Box<Type>, Box<Expr>),
+    Println(Box<Expr>),
 }
 
 impl Expr {
@@ -133,6 +134,25 @@ impl Expr {
                     },
                     _ => panic!("can not apply match operator for non variant"),
                 }
+            },
+            &Expr::Println(box ref e) => {
+                match e.eval(context) {
+                    Expr::Number(n) => println!("{}", n),
+                    Expr::Bool(b) => println!("{}", b),
+                    Expr::Unit => println!("unit"),
+                    Expr::Lambda(name, box ty, box e) => println!("func {}: {:?} -> {:?}", name, ty, e),
+                    Expr::Record(branches) => {
+                        print!("[* ");
+                        for branch in branches {
+                            print!("{}: {:?}, ", branch.0, branch.1)
+                        }
+                        println!("]")
+                    },
+                    Expr::Variant(label, box expr, box ty)
+                        => print!("[+ {}: {:?} as {:?}", label, expr, ty),
+                    _ => panic!("internal error: {:?} is not value", e)
+                }
+                Expr::Unit
             },
             &Expr::TypeAlias(_, _, box ref e) => e.eval(context),
             &Expr::Var(ref name) => context.lookup_expr(name),
@@ -265,6 +285,10 @@ impl Expr {
                 }
             },
             &Expr::Match(box ref e, ref branches) => Expr::match_typecheck(e, branches, context),
+            &Expr::Println(box ref e) => {
+                e.type_of(context);
+                Type::Primitive("Unit".to_string())
+            },
             &Expr::TypeAlias(ref name, box ref ty, box ref e) => {
                 let new_context = context.add_type_alias(name, ty);
                 e.type_of(&new_context)

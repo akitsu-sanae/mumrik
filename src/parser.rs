@@ -161,6 +161,7 @@ named!(factor <Expr>, alt!(
         number |
         boolean |
         unit |
+        println |
         variable |
         record |
         variant |
@@ -295,6 +296,17 @@ named!(record_type <Type>, chain!(
         tag!("]") ~
         multispace?,
         || Type::Record(branches)));
+
+named!(println <Expr>, chain!(
+        multispace? ~
+        tag!("println") ~
+        multispace? ~
+        tag!("[") ~
+        e: expr ~
+        multispace? ~
+        tag!("]") ~
+        multispace?,
+        || Expr::Println(box e)));
 
 named!(primitive_type <Type>,
        map!(identifier, |s: String| Type::Primitive(s)));
