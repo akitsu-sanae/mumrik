@@ -121,3 +121,15 @@ fn match_() {
     assert_eq!(e.eval(&Context::new()), Expr::Number(2));
 }
 
+#[test]
+fn println() {
+    let e = expr(b"println [1]; println [true]; println[unit]").unwrap().1;
+    assert_eq!(e, Expr::Sequence(
+            box Expr::Println(box Expr::Number(1)),
+            box Expr::Sequence(
+                box Expr::Println(box Expr::Bool(true)),
+                box Expr::Println(box Expr::Unit))));
+    assert_eq!(e.eval(&Context::new()), Expr::Unit);
+
+}
+
