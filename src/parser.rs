@@ -252,7 +252,7 @@ named!(paren <Expr>, chain!(
 named!(type_ <Type>, alt!(
         variant_type |
         record_type |
-        primitive_type));
+        function_type));
 
 named!(type_branch <(String, Box<Type>)>, chain!(
     multispace? ~
@@ -304,6 +304,16 @@ named!(println <Expr>, chain!(
         e: type_alias ~
         multispace?,
         || Expr::Println(box e)));
+
+named!(function_type <Type>, chain!(
+        multispace? ~
+        mut acc: primitive_type ~
+        multispace? ~
+        many0!(
+              tap!(ty: preceded!(tag!("->"), function_type) => acc = Type::Function(box acc, box ty.clone()))) ~
+        multispace?,
+        || acc));
+
 
 named!(primitive_type <Type>,
        map!(identifier, |s: String| Type::Primitive(s)));
