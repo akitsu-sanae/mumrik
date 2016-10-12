@@ -17,7 +17,7 @@ named!(pub expr<Expr>, alt!(
             multispace? ~
             init: type_alias ~
             multispace? ~
-            tag!(";") ~
+            tag!("in") ~
             multispace? ~
             after: expr ~
             multispace?,
