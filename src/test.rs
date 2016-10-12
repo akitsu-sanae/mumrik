@@ -123,7 +123,7 @@ fn match_() {
 
 #[test]
 fn println() {
-    let e = expr(b"println [1]; println [true]; println[unit]").unwrap().1;
+    let e = expr(b"println 1; println true; println unit").unwrap().1;
     assert_eq!(e, Expr::Sequence(
             box Expr::Println(box Expr::Number(1)),
             box Expr::Sequence(

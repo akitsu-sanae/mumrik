@@ -301,10 +301,7 @@ named!(println <Expr>, chain!(
         multispace? ~
         tag!("println") ~
         multispace? ~
-        tag!("[") ~
-        e: expr ~
-        multispace? ~
-        tag!("]") ~
+        e: type_alias ~
         multispace?,
         || Expr::Println(box e)));
 
