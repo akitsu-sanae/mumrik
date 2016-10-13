@@ -162,6 +162,7 @@ named!(factor <Expr>, alt!(
         boolean |
         unit |
         println |
+        fix |
         variable |
         record |
         variant |
@@ -201,6 +202,14 @@ named!(number <Expr>,
 
 named!(variable <Expr>,
        map!(identifier, |s: String| Expr::Var(s.clone())));
+
+named!(fix <Expr>, chain!(
+        multispace? ~
+        tag!("fix") ~
+        multispace? ~
+        e: type_alias ~
+        multispace?,
+        || Expr::Fix(box e)));
 
 // [* first = 1, second = 114]
 named!(record <Expr>, chain!(

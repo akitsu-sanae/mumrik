@@ -12,6 +12,7 @@ pub enum Expr {
     Apply(Box<Expr>, Box<Expr>),
     Sequence(Box<Expr>, Box<Expr>),
     Let(String, Box<Expr>, Box<Expr>),
+    Fix(Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Equal(Box<Expr>, Box<Expr>),
     NotEqual(Box<Expr>, Box<Expr>),
@@ -48,6 +49,21 @@ impl Expr {
             &Expr::Let(ref name, box ref init, box ref after) => {
                 let new_context = context.add_expr(name, init);
                 after.eval(&new_context)
+            },
+            &Expr::Fix(box ref e) => {
+                match e.eval(context) {
+                    Expr::Lambda(name, _, box body) => {
+                        let new_context = context.add_expr(&name, e);
+                        body.eval(&new_context)
+                    },
+                    _ => {
+                        if e.is_value() {
+                            e.clone()
+                        } else {
+                            e.eval(context)
+                        }
+                    },
+                }
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 Expr::Apply(
@@ -188,6 +204,19 @@ impl Expr {
             &Expr::Let(ref name, box ref init, box ref after) => {
                 let new_context = context.add_type(name, &init.type_of(context));
                 after.type_of(&new_context)
+            },
+            &Expr::Fix(box ref e) => {
+                let t = e.type_of(context);
+                match t.clone() {
+                    Type::Function(box ty1, box ty2) => {
+                        if ty1 == ty2 {
+                            ty1
+                        } else {
+                            panic!("can not apply fix to this type: {:?}", t)
+                        }
+                    },
+                    _ => panic!("can not fix unfunctional type"),
+                }
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 if e1.type_of(context) == Type::Primitive("Unit".to_string()) {
