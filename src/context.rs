@@ -26,7 +26,7 @@ impl Context {
     pub fn lookup_expr(&self, name: &String) -> Expr {
         let res = self.value_binding.iter().find(|ref e| {
             e.0 == name.clone()
-        }).expect("no such variable");
+        }).expect(format!("no such variable: {}\n value binding : {:?}", name, self.value_binding).as_str());
         res.clone().1
     }
 
@@ -39,7 +39,7 @@ impl Context {
     pub fn lookup_type(&self, name: &String) -> Type {
         let res = self.type_binding.iter().find(|ref e| {
             e.0 == name.clone()
-        }).expect("no such type");
+        }).expect(format!("no such type: {}\n type binding: {:?}", name, self.type_binding).as_str());
         res.clone().1
     }
 
