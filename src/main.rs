@@ -1,12 +1,12 @@
+#![feature(plugin)]
+#![plugin(peg_syntax_ext)]
+
+
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-#[macro_use]
-extern crate nom;
-
 mod expr;
 mod context;
-mod parser;
 mod type_;
 
 #[cfg(test)]
@@ -17,8 +17,6 @@ use std::io::Read;
 use std::io::Write;
 use std::fs::File;
 use context::Context;
-
-use nom::IResult;
 
 fn main() {
     println!("\u{001B}[34m-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\u{001B}[39m");
@@ -44,22 +42,25 @@ fn main() {
                 File::open(filename.as_str().trim()).and_then(|mut f| {
                     f.read_to_string(&mut src)
                 }).expect("no such file");
-                exec(src)
+                exec(&src)
             },
-            _ => exec(line),
+            _ => exec(&line),
         }
     }
 }
 
-fn exec(src: String) {
-    let expr = parser::expr(src.as_bytes());
-    match expr {
-        IResult::Done(_, e) => {
-            println!("expr: {:?}", e);
-            println!("type: {:?}", e.type_of(&Context::new()));
-            println!("value: {:?}", e.eval(&Context::new()));
+peg_file! parse("grammar.rustpeg");
+
+fn exec(src: &String) {
+    match parse::expr(src.as_str()) {
+        Ok(expr) => {
+            println!("expr: {:?}", expr);
+            println!("type: {:?}", expr.type_of(&Context::new()));
+            println!("value: {:?}", expr.eval(&Context::new()));
         },
-        _ => println!("\u{001B}[31mparsing fail ...\u{001B}[39m"),
+        Err(err) => {
+            println!("\u{001B}[31mparsing fail : {:?}\u{001B}[39m", err)
+        }
     }
 }
 
