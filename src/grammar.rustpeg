@@ -120,9 +120,10 @@ branch -> (String, Box<Expr>)
         (label, box e)
     }
 
+// Term::Add(hoge)
 variant_expr -> Expr
-  = LEFT_VARIANT br:branch RIGHT_VARIANT AS ty:type_ {
-      Expr::Variant(br.0.clone(), br.1.clone(), box ty)
+  = ty:type_ DOUBLE_COLON label:identifier LEFT_PAREN e:expr RIGHT_PAREN  {
+      Expr::Variant(label.clone(), box e, box ty)
   }
 
 record_expr -> Expr
@@ -153,6 +154,7 @@ AT = "@" __
 COMMA = "," __
 DOT = "."
 COLON = ":" __
+DOUBLE_COLON = "::" __
 SEMICOLON = ";" __
 ARROW = "->" __
 FAT_ARROW = "=>" __
