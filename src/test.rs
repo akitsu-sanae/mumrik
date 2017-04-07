@@ -18,7 +18,7 @@ fn apply() {
     assert_eq!(e, Expr::Apply(
             box Expr::Lambda("x".to_string(), box Type::Primitive("Int".to_string()), box Expr::Var("x".to_string())),
             box Expr::Number(1)));
-    assert_eq!(e.eval(&Context::new()), Expr::Number(1));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(1)));
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn sequence() {
             box Expr::Sequence(
                 box Expr::Number(2),
                 box Expr::Number(3))));
-    assert_eq!(e.eval(&Context::new()), Expr::Number(3));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(3)));
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn if_() {
             box Expr::Bool(true),
             box Expr::Number(1),
             box Expr::Number(2)));
-    assert_eq!(e.eval(&Context::new()), Expr::Number(1));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(1)));
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn arithmetic() {
                     box Expr::Number(2),
                     box Expr::Number(5))),
             box Expr::Number(6)));
-    assert_eq!(e.eval(&Context::new()), Expr::Number(17))
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(17)));
 }
 
 #[test]
@@ -61,9 +61,9 @@ fn record() {
     assert_eq!(e, Expr::Record(vec![
         ("id".to_string(), box Expr::Number(42)),
         ("value".to_string(), box Expr::Number(123))]));
-    assert_eq!(e.eval(&Context::new()), Expr::Record(vec![
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Record(vec![
         ("id".to_string(), box Expr::Number(42)),
-        ("value".to_string(), box Expr::Number(123))]));
+        ("value".to_string(), box Expr::Number(123))])));
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn dot() {
                 ("id".to_string(), box Expr::Number(42)),
                 ("value".to_string(), box Expr::Number(123))]),
             "id".to_string()));
-    assert_eq!(e.eval(&Context::new()), Expr::Number(42));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(42)));
 }
 
 #[test]
@@ -87,13 +87,13 @@ fn variant() {
                 ("hoge".to_string(), box Type::Primitive("Int".to_string())),
                 ("fuga".to_string(), box Type::Primitive("Bool".to_string()))
                 ])));
-    assert_eq!(e.eval(&Context::new()), Expr::Variant(
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Variant(
             "hoge".to_string(),
             box Expr::Number(1),
             box Type::Variant(vec![
                               ("hoge".to_string(), box Type::Primitive("Int".to_string())),
                               ("fuga".to_string(), box Type::Primitive("Bool".to_string()))
-                              ])));
+                              ]))));
 
 }
 
@@ -118,7 +118,7 @@ fn match_() {
                 box Expr::Var("x".to_string()),
                 box Expr::Number(100),
                 box Expr::Number(200)))]));
-    assert_eq!(e.eval(&Context::new()), Expr::Number(2));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(2)));
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn println() {
             box Expr::Sequence(
                 box Expr::Println(box Expr::Bool(true)),
                 box Expr::Println(box Expr::Unit))));
-    assert_eq!(e.eval(&Context::new()), Expr::Unit);
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Unit));
 
 }
 

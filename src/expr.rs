@@ -41,10 +41,14 @@ impl Expr {
                         let new_context = context.add_expr(name, arg);
                         body.eval(&new_context)
                     },
-                    &Expr::Lambda(_, _, _) =>
-                        Ok(Expr::Apply(box f.clone(), box arg.eval(context)).eval(context)),
-                    _ =>
-                        Ok(Expr::Apply(box f.eval(context), box arg.clone()).eval(context)),
+                    &Expr::Lambda(_, _, _) => {
+                        let arg = try!(arg.eval(context));
+                        Expr::Apply(box f.clone(), box arg).eval(context)
+                    }
+                    _ => {
+                        let f = try!(f.eval(context));
+                        Expr::Apply(box f, box arg.clone()).eval(context)
+                    }
                 }
             },
             &Expr::Let(ref name, box ref init, box ref after) => {
@@ -52,14 +56,14 @@ impl Expr {
                 after.eval(&new_context)
             },
             &Expr::Fix(box ref e) => {
-                match e.eval(context) {
+                match try!(e.eval(context)) {
                     Expr::Lambda(name, _, box body) => {
                         let new_context = context.add_expr(&name, e);
                         body.eval(&new_context)
                     },
                     _ => {
                         if e.is_value() {
-                            e.clone()
+                            Ok(e.clone())
                         } else {
                             e.eval(context)
                         }
@@ -72,7 +76,7 @@ impl Expr {
                     box e1.clone()).eval(context)
             },
             &Expr::If(box ref cond, box ref tr, box ref fl) => {
-                match cond.eval(context) {
+                match try!(cond.eval(context)) {
                     Expr::Bool(c) => {
                         if c {
                             tr.eval(context)
@@ -84,51 +88,51 @@ impl Expr {
                 }
             },
             &Expr::Equal(box ref e1, box ref e2) => {
-                match (e1.eval(context), e2.eval(context)) {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l == r)),
                     (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l == r)),
-                    _ => Err(("can not {:?} = {:?}", e1, e2))
+                    _ => Err(format!("can not {:?} = {:?}", e1, e2))
                 }
             },
             &Expr::NotEqual(box ref e1, box ref e2) => {
-                match (e1.eval(context), e2.eval(context)) {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l != r)),
                     (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l != r)),
                     _ => Err(format!("can not {:?} = {:?}", e1, e2))
                 }
             },
             &Expr::Add(box ref e1, box ref e2) => {
-                match (e1.eval(context), e2.eval(context)) {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l+r)),
                     _ => Err(format!("can not unnumeric values")),
                 }
             },
             &Expr::Sub(box ref e1, box ref e2) => {
-                match (e1.eval(context), e2.eval(context)) {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l-r)),
                     _ => Err(format!("can not unnumeric values")),
                 }
             },
             &Expr::Mult(box ref e1, box ref e2) => {
-                match (e1.eval(context), e2.eval(context)) {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l*r)),
                     _ => Err(format!("can not unnumeric values")),
                 }
             },
             &Expr::Div(box ref e1, box ref e2) => {
-                match (e1.eval(context), e2.eval(context)) {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l/r)),
                     _ => Err(format!("can not unnumeric values")),
                 }
             },
             &Expr::Dot(box ref e, ref label) => {
-                match e.eval(context) {
+                match try!(e.eval(context)) {
                     Expr::Record(v) => {
                         let found = v.iter().find(|e| {
                             e.0 == label.clone()
                         });
                         if let Some(branch) = found {
-                            *branch.1.clone()
+                            Ok(*branch.1.clone())
                         } else {
                             Err(format!("not found such filed in {:?} : {}", e, label))
                         }
@@ -155,7 +159,7 @@ impl Expr {
             &Expr::Println(box ref e) => {
                 match e.eval(context) {
                     Ok(e) => {
-                        match e.eval(context) {
+                        match try!(e.eval(context)) {
                             Expr::Number(n) => println!("{}", n),
                             Expr::Bool(b) => println!("{}", b),
                             Expr::Unit => println!("unit"),
@@ -168,7 +172,7 @@ impl Expr {
                                 println!("]")
                             },
                             Expr::Variant(label, box expr, box ty) => {
-                                print!("[+ {}: {:?} as {:?}", label, expr, ty),
+                                print!("[+ {}: {:?} as {:?}", label, expr, ty)
                             },
                             _ => panic!("internal error: {:?} is not value", e)
                         };
@@ -306,23 +310,17 @@ impl Expr {
             },
             // ([* hoge = 1, fuga = 3] as [+ hoge: Int, fuga: Int]).hoge
             &Expr::Dot(box ref e, ref label) => {
-                match e.eval(context) {
-                    Ok(e) => {
-                        match e {
-                            Expr::Record(v) => {
-                                let found = v.iter().find(|e| {
-                                    e.0 == label.clone()
-                                });
-                                if let Some(branch) = found {
-                                    branch.1.type_of(context)
-                                } else {
-                                    panic!("not found such filed in {:?} : {}", e, label)
-                                }
-                            },
-                            _ => panic!("can not apply dot operator for non record")
+                match e.type_of(context) {
+                    Type::Record(branches) => {
+                        if let Some(branch) = branches.iter().find(|e| {
+                            e.0 == label.clone()
+                        }) {
+                            *branch.1.clone()
+                        } else {
+                            panic!("not found such filed in {:?} : {}", e, label)
                         }
                     },
-                    Err(e) => Err(e)
+                    _ => panic!("can not apply dot operator for non record")
                 }
             },
             &Expr::Match(box ref e, ref branches) => Expr::match_typecheck(e, branches, context),
