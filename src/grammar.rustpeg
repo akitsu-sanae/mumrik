@@ -15,7 +15,7 @@ type_branch -> (String, Box<Type>)
   }
 
 variant_type -> Type
-  = LEFT_VARIANT branches:type_branch* RIGHT_VARIANT {
+  = branches:(BAR tag:identifier COLON ty:type_ COMMA? { (tag, box ty) })+ {
       Type::Variant(branches)
   }
 
@@ -35,8 +35,15 @@ primitive_type -> Type
       Type::Primitive(name)
   }
 
+
 pub expr -> Expr
-  = __ e:let_expr { e }
+  = __ e:type_alias { e }
+
+type_alias -> Expr
+  = TYPE name:identifier EQUAL ty:type_ after:expr {
+      Expr::TypeAlias(name, box ty, box after)
+  }
+  / let_expr
 
 let_expr -> Expr
   = LET name:identifier EQUAL init:inner_expr SEMICOLON  body:expr {
@@ -162,8 +169,7 @@ LEFT_BRACE = "{" __
 RIGHT_BRACE = "}" __
 LEFT_PAREN = "(" __
 RIGHT_PAREN = ")" __
-LEFT_VARIANT = "[+" __
-RIGHT_VARIANT = "+]" __
+BAR = "|" __
 LEFT_RECORD = "[*" __
 RIGHT_RECORD = "*]" __
 
@@ -175,6 +181,7 @@ MATCH = keyword<"match">
 PRINTLN = keyword<"println">
 FUNC = keyword<"func">
 AS = keyword<"as">
+TYPE = keyword<"type">
 
 TRUE = keyword<"true">
 FALSE = keyword<"false">

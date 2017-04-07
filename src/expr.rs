@@ -165,14 +165,14 @@ impl Expr {
                             Expr::Unit => println!("unit"),
                             Expr::Lambda(name, box ty, box e) => println!("func {}: {:?} -> {:?}", name, ty, e),
                             Expr::Record(branches) => {
-                                print!("[* ");
+                                print!("{{");
                                 for branch in branches {
                                     print!("{}: {:?}, ", branch.0, branch.1)
                                 }
-                                println!("]")
+                                println!("}}")
                             },
                             Expr::Variant(label, box expr, box ty) => {
-                                print!("[+ {}: {:?} as {:?}", label, expr, ty)
+                                print!("{:?}::{}({:?})", ty, label, expr)
                             },
                             _ => panic!("internal error: {:?} is not value", e)
                         };
@@ -287,7 +287,6 @@ impl Expr {
                     (e.0.clone(), box e.1.type_of(context))
                 }).collect())
             },
-            // [+ tag = e] as ty
             &Expr::Variant(ref tag, box ref e, box ref ty) => {
                 match Expr::desugar_type(ty, context) {
                     Type::Variant(v) => {
@@ -295,11 +294,12 @@ impl Expr {
                             e.0 == tag.clone()
                         });
                         if let Some(branch) = found {
-                            let e_ty = e.type_of(context);
-                            if e_ty == Expr::desugar_type(&*branch.1, context) {
+                            let e_ty = Expr::desugar_type(&e.type_of(context), context);
+                            let branch_ty = Expr::desugar_type(branch.1.as_ref(), context);
+                            if e_ty == branch_ty {
                                 ty.clone()
                             } else {
-                                panic!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, ty, branch.1)
+                                panic!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, e_ty, branch.1)
                             }
                         } else {
                             panic!("not found such tag {} in variant {:?}", tag, ty)
@@ -308,7 +308,6 @@ impl Expr {
                     _ => panic!("variant type specifier must be variant type")
                 }
             },
-            // ([* hoge = 1, fuga = 3] as [+ hoge: Int, fuga: Int]).hoge
             &Expr::Dot(box ref e, ref label) => {
                 match e.type_of(context) {
                     Type::Record(branches) => {

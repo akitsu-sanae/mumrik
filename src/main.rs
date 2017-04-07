@@ -59,7 +59,8 @@ fn exec(src: &String) {
             println!("value: {:?}", expr.eval(&Context::new()));
         },
         Err(err) => {
-            println!("\u{001B}[31mparsing fail : {:?}\u{001B}[39m", err)
+            println!("\u{001B}[31m{}^", " ".repeat(err.column+1));
+            println!("expected: {:?}\u{001B}[39m", err.expected)
         }
     }
 }
