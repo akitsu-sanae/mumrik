@@ -23,11 +23,14 @@ impl Context {
         new_context
     }
 
-    pub fn lookup_expr(&self, name: &String) -> Expr {
+    pub fn lookup_expr(&self, name: &String) -> Result<Expr, String> {
         let res = self.value_binding.iter().find(|ref e| {
             e.0 == name.clone()
-        }).expect(format!("no such variable: {}\n value binding : {:?}", name, self.value_binding).as_str());
-        res.clone().1
+        });
+        match res {
+            Some(res) => Ok(res.clone().1),
+            None => Err(format!("no such variable: {}\n value binding : {:?}", name, self.value_binding)),
+        }
     }
 
     pub fn add_type(&self, name: &String, ty: &Type) -> Self {
