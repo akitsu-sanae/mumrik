@@ -43,6 +43,14 @@ type_alias -> Expr
   = TYPE name:identifier EQUAL ty:type_ after:expr {
       Expr::TypeAlias(name, box ty, box after)
   }
+  / func_expr
+
+func_expr -> Expr
+  = FUNC name:identifier arg:identifier COLON arg_ty:type_ LEFT_BRACE body:let_expr RIGHT_BRACE after:expr {
+      // func f arg: T = expr
+      // => let f = func arg: T -> expr
+      Expr::Let(name, box Expr::Lambda(arg, box arg_ty, box body), box after)
+  }
   / let_expr
 
 let_expr -> Expr

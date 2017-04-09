@@ -133,3 +133,20 @@ fn println() {
 
 }
 
+#[test]
+fn func() {
+    let e = expr("func f a:Int { a+12 } f@13").unwrap();
+    assert_eq!(e, Expr::Let(
+            "f".to_string(),
+            box Expr::Lambda(
+                "a".to_string(),
+                box Type::Primitive("Int".to_string()),
+                box Expr::Add(
+                    box Expr::Var("a".to_string()),
+                    box Expr::Number(12))),
+            box Expr::Apply(
+                box Expr::Var("f".to_string()),
+                box Expr::Number(13))));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(25)));
+}
+
