@@ -33,18 +33,20 @@ fn main() {
         match line.as_str().trim() {
             "quit" => return,
             "help" => print_help(),
-            "load" => {
-                print!("filename: ");
+            line if line.split_whitespace().collect::<Vec<_>>()[0] == "load" => {
+                let filename = line.split_whitespace().collect::<Vec<_>>()[1];
                 io::stdout().flush().unwrap();
-                let mut filename = String::new();
-                io::stdin().read_line(&mut filename).unwrap();
                 let mut src = String::new();
-                File::open(filename.as_str().trim()).and_then(|mut f| {
+                let f = File::open(filename).and_then(|mut f| {
                     f.read_to_string(&mut src)
-                }).expect("no such file");
-                exec(&src)
+                });
+                if f.is_ok() {
+                    exec(&src)
+                } else {
+                    println!("can not load file: {}", filename)
+                }
             },
-            _ => exec(&line),
+            _ => exec(&line)
         }
     }
 }
