@@ -51,11 +51,17 @@ func_expr -> Expr
       // => let f = func arg: T -> expr
       Expr::Let(name, box Expr::Lambda(arg, box arg_ty, box body), box after)
   }
+  / REC FUNC name:identifier arg:identifier COLON arg_ty:type_ COLON ret_ty:type_ LEFT_BRACE body:let_expr RIGHT_BRACE after:expr {
+      Expr::LetRec(name, box Type::Function(box arg_ty.clone(), box ret_ty), box Expr::Lambda(arg, box arg_ty, box body), box after)
+  }
   / let_expr
 
 let_expr -> Expr
   = LET name:identifier EQUAL init:inner_expr SEMICOLON  body:expr {
       Expr::Let(name, box init, box body)
+  }
+  / REC LET name:identifier COLON ty:type_ EQUAL init:inner_expr SEMICOLON  body:expr {
+      Expr::LetRec(name, box ty, box init, box body)
   }
   / sequence_expr
 
@@ -198,6 +204,7 @@ ELSE = keyword<"else">
 MATCH = keyword<"match">
 PRINTLN = keyword<"println">
 FUNC = keyword<"func">
+REC = keyword<"rec">
 AS = keyword<"as">
 TYPE = keyword<"type">
 

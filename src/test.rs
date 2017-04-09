@@ -165,3 +165,37 @@ fn func() {
     assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(25)));
 }
 
+#[test]
+fn rec_func() {
+    // let e = expr("rec let fib: Int -> Int = func x:Int => if x < 2 { 1 } else { (fib (x-1)) + (fib (x-2) }; fib 8").unwrap();
+    let e = expr("rec func fib x:Int :Int { if x < 2 { 1 } else { (fib (x-1)) + (fib (x-2)) } } fib 3").unwrap();
+    assert_eq!(e, Expr::LetRec(
+            "fib".to_string(),
+            box Type::Function(
+                box Type::Primitive("Int".to_string()),
+                box Type::Primitive("Int".to_string())),
+            box Expr::Lambda(
+                "x".to_string(),
+                box Type::Primitive("Int".to_string()),
+                box Expr::If(
+                    box Expr::LessThan(
+                        box Expr::Var("x".to_string()),
+                        box Expr::Number(2)),
+                    box Expr::Number(1),
+                    box Expr::Add(
+                        box Expr::Apply(
+                            box Expr::Var("fib".to_string()),
+                            box Expr::Sub(
+                                box Expr::Var("x".to_string()),
+                                box Expr::Number(1))),
+                        box Expr::Apply(
+                            box Expr::Var("fib".to_string()),
+                            box Expr::Sub(
+                                box Expr::Var("x".to_string()),
+                                box Expr::Number(2)))))),
+            box Expr::Apply(
+                box Expr::Var("fib".to_string()),
+                box Expr::Number(3))));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(3)));
+}
+

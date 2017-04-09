@@ -12,6 +12,7 @@ pub enum Expr {
     Apply(Box<Expr>, Box<Expr>),
     Sequence(Box<Expr>, Box<Expr>),
     Let(String, Box<Expr>, Box<Expr>),
+    LetRec(String, Box<Type>, Box<Expr>, Box<Expr>),
     Fix(Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Equal(Box<Expr>, Box<Expr>),
@@ -35,12 +36,12 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn eval(&self, context: &Context) -> Result<Expr, String> {
+    pub fn eval(&self, context: &Context<Expr>) -> Result<Expr, String> {
         match self {
             &Expr::Apply(box ref f, box ref arg) => {
                 match f {
                     &Expr::Lambda(ref name, _, box ref body) if arg.is_value() => {
-                        let new_context = context.add_expr(name, arg);
+                        let new_context = context.add(name, arg);
                         body.eval(&new_context)
                     },
                     &Expr::Lambda(_, _, _) => {
@@ -54,13 +55,17 @@ impl Expr {
                 }
             },
             &Expr::Let(ref name, box ref init, box ref after) => {
-                let new_context = context.add_expr(name, init);
+                let new_context = context.add(name, init);
                 after.eval(&new_context)
+            },
+            &Expr::LetRec(ref name, _, box ref init, box ref body) => {
+                let new_context = context.add(name, init);
+                body.eval(&new_context)
             },
             &Expr::Fix(box ref e) => {
                 match try!(e.eval(context)) {
                     Expr::Lambda(name, _, box body) => {
-                        let new_context = context.add_expr(&name, e);
+                        let new_context = context.add(&name, e);
                         body.eval(&new_context)
                     },
                     _ => {
@@ -161,7 +166,7 @@ impl Expr {
                             label.clone() == br.0
                         });
                         if let Some(branch) = found {
-                            let new_context = context.add_expr(&branch.1, e);
+                            let new_context = context.add(&branch.1, e);
                             branch.2.eval(&new_context)
                         } else {
                             Err(format!("can not find such label in {:?}: {}", ty, label))
@@ -196,20 +201,20 @@ impl Expr {
                 }
                             },
             &Expr::TypeAlias(_, _, box ref e) => e.eval(context),
-            &Expr::Var(ref name) => context.lookup_expr(name),
+            &Expr::Var(ref name) => context.lookup(name),
             _ => Ok(self.clone()),
         }
     }
 
-    pub fn type_of(&self, context: &Context) -> Type {
+    pub fn type_of(&self, context: &Context<Type>) -> Type {
         match self {
             &Expr::Number(_) => Type::Primitive("Int".to_string()),
             &Expr::Bool(_) => Type::Primitive("Bool".to_string()),
             &Expr::Unit => Type::Primitive("Unit".to_string()),
-            &Expr::Var(ref name) => context.lookup_type(name),
+            &Expr::Var(ref name) => context.lookup(name).unwrap(),
             &Expr::Lambda(ref name, box ref ty, box ref e) => {
                 let ty = Expr::desugar_type(ty, context);
-                let new_context = context.add_type(name, &ty);
+                let new_context = context.add(name, &ty);
                 let ret_ty = e.type_of(&new_context);
                 Type::Function(box ty.clone(), box ret_ty)
             },
@@ -227,9 +232,15 @@ impl Expr {
                 }
             },
             &Expr::Let(ref name, box ref init, box ref after) => {
-                let new_context = context.add_type(name, &init.type_of(context));
+                let new_context = context.add(name, &init.type_of(context));
                 after.type_of(&new_context)
             },
+            &Expr::LetRec(ref name, box ref ty, box ref init, box ref body) => {
+                let ty = Expr::desugar_type(ty, context);
+                let new_context = context.add(name, &ty);
+                assert!(init.type_of(&new_context) == ty);
+                body.type_of(&new_context)
+            }
             &Expr::Fix(box ref e) => {
                 let t = e.type_of(context);
                 match t.clone() {
@@ -344,7 +355,7 @@ impl Expr {
                 Type::Primitive("Unit".to_string())
             },
             &Expr::TypeAlias(ref name, box ref ty, box ref e) => {
-                let new_context = context.add_type_alias(name, ty);
+                let new_context = context.add(name, &Expr::desugar_type(&ty, context));
                 e.type_of(&new_context)
             },
         }
@@ -354,7 +365,7 @@ impl Expr {
     fn match_typecheck(
         e: &Expr,
         branches: &Vec<(String, String, Box<Expr>)>,
-        context: &Context) -> Type
+        context: &Context<Type>) -> Type
     {
         let expr_branches = match e {
             &Expr::Variant(_, _, box ref ty) => {
@@ -374,7 +385,7 @@ impl Expr {
             let body_branch: &(String, String, Box<Expr>) = branches.iter().find(|x| {
                 x.0 == label
             }).unwrap();
-            let new_context = context.add_type(&body_branch.1, &Expr::desugar_type(&*expr_branch.1, context));
+            let new_context = context.add(&body_branch.1, &Expr::desugar_type(&*expr_branch.1, context));
             ret_types.push(body_branch.2.type_of(&new_context));
         }
         if ret_types.iter().all(|x| {
@@ -386,10 +397,10 @@ impl Expr {
         }
      }
 
-    fn desugar_type(ty: &Type, context: &Context) -> Type {
+    fn desugar_type(ty: &Type, context: &Context<Type>) -> Type {
         match ty {
             &Type::Primitive(ref x) => {
-                if let Some(ty) = context.lookup_type_alias(x) {
+                if let Ok(ty) = context.lookup(x) {
                     ty
                 } else {
                     ty.clone()
