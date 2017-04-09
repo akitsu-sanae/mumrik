@@ -41,27 +41,29 @@ fn main() {
                     f.read_to_string(&mut src)
                 });
                 if f.is_ok() {
-                    exec(&src)
+                    exec(src.as_str())
                 } else {
                     println!("can not load file: {}", filename)
                 }
             },
-            _ => exec(&line)
+            _ => exec(line.as_str().trim())
         }
     }
 }
 
 peg_file! parse("grammar.rustpeg");
 
-fn exec(src: &String) {
-    match parse::expr(src.as_str()) {
+fn exec(src: &str) {
+    match parse::expr(src) {
         Ok(expr) => {
             println!("expr: {:?}", expr);
             println!("type: {:?}", expr.type_of(&Context::new()));
             println!("value: {:?}", expr.eval(&Context::new()));
         },
         Err(err) => {
-            println!("\u{001B}[31m{}^", " ".repeat(err.column+1));
+            let lines: Vec<_> = src.split('\n').collect();
+            println!("{}", lines[err.line - 1]);
+            println!("\u{001B}[31m{}^", " ".repeat(err.column - 1));
             println!("syntax error at line:{} column: {}\nexpected: {:?}\u{001B}[39m", err.line, err.column, err.expected)
         }
     }
