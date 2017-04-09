@@ -16,6 +16,8 @@ pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Equal(Box<Expr>, Box<Expr>),
     NotEqual(Box<Expr>, Box<Expr>),
+    LessThan(Box<Expr>, Box<Expr>),
+    GreaterThan(Box<Expr>, Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
     Mult(Box<Expr>, Box<Expr>),
@@ -99,6 +101,18 @@ impl Expr {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l != r)),
                     (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l != r)),
                     _ => Err(format!("can not {:?} = {:?}", e1, e2))
+                }
+            },
+            &Expr::LessThan(box ref e1, box ref e2) => {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
+                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l < r)),
+                    _ => Err(format!("can not compare unnumeric values"))
+                }
+            },
+            &Expr::GreaterThan(box ref e1, box ref e2) => {
+                match (try!(e1.eval(context)), try!(e2.eval(context))) {
+                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l > r)),
+                    _ => Err(format!("can not compare unnumeric values"))
                 }
             },
             &Expr::Add(box ref e1, box ref e2) => {
@@ -255,7 +269,9 @@ impl Expr {
                 }
             },
             &Expr::Equal(box ref e1, box ref e2) |
-            &Expr::NotEqual(box ref e1, box ref e2) => {
+            &Expr::NotEqual(box ref e1, box ref e2) |
+            &Expr::LessThan(box ref e1, box ref e2) |
+            &Expr::GreaterThan(box ref e1, box ref e2) => {
                 match (e1.type_of(context), e2.type_of(context)) {
                     (Type::Primitive(l), Type::Primitive(r)) => {
                         if l == r {

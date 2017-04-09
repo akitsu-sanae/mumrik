@@ -56,6 +56,21 @@ fn arithmetic() {
 }
 
 #[test]
+fn compare() {
+    let e = expr("1 < 2").unwrap();
+    assert_eq!(e, Expr::LessThan(
+            box Expr::Number(1),
+            box Expr::Number(2)));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Bool(true)));
+
+    let e = expr("1 > 2").unwrap();
+    assert_eq!(e, Expr::GreaterThan(
+            box Expr::Number(1),
+            box Expr::Number(2)));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Bool(false)));
+}
+
+#[test]
 fn record() {
     let e = expr("[* id=42, value=123 *]").unwrap();
     assert_eq!(e, Expr::Record(vec![

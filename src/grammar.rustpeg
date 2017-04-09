@@ -89,6 +89,8 @@ binop_expr -> Expr
   = #infix<apply_expr> {
     #L l DOUBLE_EQUAL r { Expr::Equal(box l, box r) }
        l NOT_EQUAL r { Expr::NotEqual(box l, box r) }
+    #L l LEFT_ANGLE_BRACKET r { Expr::LessThan(box l, box r) }
+       l RIGHT_ANGLE_BRACKET r { Expr::GreaterThan(box l, box r) }
     #L l PLUS r { Expr::Add(box l, box r) }
        l MINUS r { Expr::Sub(box l, box r) }
     #L l STAR r { Expr::Mult(box l, box r) }
@@ -182,6 +184,8 @@ LEFT_BRACE = "{" __
 RIGHT_BRACE = "}" __
 LEFT_PAREN = "(" __
 RIGHT_PAREN = ")" __
+LEFT_ANGLE_BRACKET = "<" __
+RIGHT_ANGLE_BRACKET = ">" __
 BAR = "|" __
 LEFT_RECORD = "[*" __
 RIGHT_RECORD = "*]" __
