@@ -15,11 +15,12 @@ Mumrikは以下の特徴を持つ言語を目指しています。
 
 8th Fibonacci number
 ```
-rec func fib x: int :int =
+rec func fib x: Int :Int {
     if x < 2 { 1 }
-    else { fib@(x-1) + fib@(x-2) }
+    else { fib (x-1) + fib (x-2) }
+}
 
-println fib@8
+println fib 8
 ```
 
 # Copyright
