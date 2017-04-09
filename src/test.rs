@@ -14,7 +14,7 @@ fn literal() {
 
 #[test]
 fn apply() {
-    let e = expr("(func x: Int => x)@1").unwrap();
+    let e = expr("(func x: Int => x) 1").unwrap();
     assert_eq!(e, Expr::Apply(
             box Expr::Lambda("x".to_string(), box Type::Primitive("Int".to_string()), box Expr::Var("x".to_string())),
             box Expr::Number(1)));
@@ -34,7 +34,7 @@ fn sequence() {
 
 #[test]
 fn if_() {
-    let e = expr("if true 1 2").unwrap();
+    let e = expr("if true { 1 } else { 2 }").unwrap();
     assert_eq!(e, Expr::If(
             box Expr::Bool(true),
             box Expr::Number(1),
@@ -97,7 +97,7 @@ fn variant() {
 
 #[test]
 fn match_() {
-    let e = expr("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x 100 200 }").unwrap();
+    let e = expr("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
     assert_eq!(e, Expr::TypeAlias(
             "Nyan".to_string(),
             box Type::Variant(vec![
@@ -135,7 +135,7 @@ fn println() {
 
 #[test]
 fn func() {
-    let e = expr("func f a:Int { a+12 } f@13").unwrap();
+    let e = expr("func f a:Int { a+12 } f 13").unwrap();
     assert_eq!(e, Expr::Let(
             "f".to_string(),
             box Expr::Lambda(

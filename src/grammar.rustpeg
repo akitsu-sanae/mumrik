@@ -69,7 +69,7 @@ inner_expr -> Expr
   = if_expr
 
 if_expr -> Expr
-  = IF cond:expr tr:expr fl:expr {
+  = IF cond:expr LEFT_BRACE tr:expr RIGHT_BRACE ELSE LEFT_BRACE fl:expr RIGHT_BRACE {
       Expr::If(box cond, box tr, box fl)
   }
   / match_expr
@@ -86,15 +86,20 @@ match_expr -> Expr
   / binop_expr
 
 binop_expr -> Expr
-  = #infix<dot_expr> {
+  = #infix<apply_expr> {
     #L l DOUBLE_EQUAL r { Expr::Equal(box l, box r) }
        l NOT_EQUAL r { Expr::NotEqual(box l, box r) }
     #L l PLUS r { Expr::Add(box l, box r) }
        l MINUS r { Expr::Sub(box l, box r) }
     #L l STAR r { Expr::Mult(box l, box r) }
        l SLASH r { Expr::Div(box l, box r) }
-    #L l AT r { Expr::Apply(box l, box r) }
 }
+
+apply_expr -> Expr
+  = l:dot_expr r:apply_expr {
+      Expr::Apply(box l, box r)
+  }
+  / dot_expr
 
 dot_expr -> Expr
   = e:factor labels:(DOT id:identifier { id })* {
@@ -185,6 +190,7 @@ keyword<E> = E !([a-zA-Z0-9_]) __
 
 LET = keyword<"let">
 IF = keyword<"if">
+ELSE = keyword<"else">
 MATCH = keyword<"match">
 PRINTLN = keyword<"println">
 FUNC = keyword<"func">
