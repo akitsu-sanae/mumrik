@@ -62,7 +62,7 @@ fn exec(src: &String) {
         },
         Err(err) => {
             println!("\u{001B}[31m{}^", " ".repeat(err.column+1));
-            println!("expected: {:?}\u{001B}[39m", err.expected)
+            println!("syntax error at line:{} column: {}\nexpected: {:?}\u{001B}[39m", err.line, err.column, err.expected)
         }
     }
 }
