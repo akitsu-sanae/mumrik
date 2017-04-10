@@ -206,113 +206,118 @@ impl Expr {
         }
     }
 
-    pub fn type_of(&self, context: &Context<Type>) -> Type {
+    pub fn type_of(&self, context: &Context<Type>) -> Result<Type, String> {
         match self {
-            &Expr::Number(_) => Type::Primitive("Int".to_string()),
-            &Expr::Bool(_) => Type::Primitive("Bool".to_string()),
-            &Expr::Unit => Type::Primitive("Unit".to_string()),
-            &Expr::Var(ref name) => context.lookup(name).unwrap(),
+            &Expr::Number(_) => Ok(Type::Primitive("Int".to_string())),
+            &Expr::Bool(_) => Ok(Type::Primitive("Bool".to_string())),
+            &Expr::Unit => Ok(Type::Primitive("Unit".to_string())),
+            &Expr::Var(ref name) => context.lookup(name),
             &Expr::Lambda(ref name, box ref ty, box ref e) => {
                 let ty = Expr::desugar_type(ty, context);
                 let new_context = context.add(name, &ty);
-                let ret_ty = e.type_of(&new_context);
-                Type::Function(box ty.clone(), box ret_ty)
+                let ret_ty = try!(e.type_of(&new_context));
+                Ok(Type::Function(box ty.clone(), box ret_ty))
             },
             &Expr::Apply(box ref e1, box ref e2) => {
-                let para = e2.type_of(context);
-                match e1.type_of(context) {
+                let para = try!(e2.type_of(context));
+                match try!(e1.type_of(context)) {
                     Type::Function(box arg, box ret) => {
                         if arg == para {
-                            ret
+                            Ok(ret)
                         } else {
-                            panic!("not much type {:?} and {:?}", arg, para)
+                            Err(format!("not much type {:?} and {:?}", arg, para))
                         }
                     },
-                    _ => panic!("can not apply to non functional type")
+                    _ => Err(format!("can not apply to non functional type"))
                 }
             },
             &Expr::Let(ref name, box ref init, box ref after) => {
-                let new_context = context.add(name, &init.type_of(context));
+                let new_context = context.add(name, &try!(init.type_of(context)));
                 after.type_of(&new_context)
             },
             &Expr::LetRec(ref name, box ref ty, box ref init, box ref body) => {
                 let ty = Expr::desugar_type(ty, context);
                 let new_context = context.add(name, &ty);
-                assert!(init.type_of(&new_context) == ty);
-                body.type_of(&new_context)
+                if init.type_of(&new_context) == Ok(ty.clone()) {
+                    body.type_of(&new_context)
+                } else {
+                    Err(format!("type error: not match {:?}", ty))
+                }
             }
             &Expr::Fix(box ref e) => {
-                let t = e.type_of(context);
+                let t = try!(e.type_of(context));
                 match t.clone() {
                     Type::Function(box ty1, box ty2) => {
                         if ty1 == ty2 {
-                            ty1
+                            Ok(ty1)
                         } else {
-                            panic!("can not apply fix to this type: {:?}", t)
+                            Err(format!("can not apply fix to this type: {:?}", t))
                         }
                     },
-                    _ => panic!("can not fix unfunctional type"),
+                    _ => Err(format!("can not fix unfunctional type")),
                 }
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
-                if e1.type_of(context) == Type::Primitive("Unit".to_string()) {
+                if try!(e1.type_of(context)) == Type::Primitive("Unit".to_string()) {
                     e2.type_of(context)
                 } else {
-                    panic!("{:?} is not unit type", e1)
+                    Err(format!("{:?} is not unit type", e1))
                 }
             },
             &Expr::If(box ref cond, box ref tr, box ref fl) => {
-                match cond.type_of(context) {
+                match try!(cond.type_of(context)) {
                     Type::Primitive(c) => {
                         if c == "Bool" {
-                            let tr_ty = tr.type_of(context);
-                            let fl_ty = fl.type_of(context);
+                            let tr_ty = try!(tr.type_of(context));
+                            let fl_ty = try!(fl.type_of(context));
                             if tr_ty == fl_ty {
-                                tr_ty
+                                Ok(tr_ty)
                             } else {
-                                panic!("unmatch type: {:?} and {:?}", tr_ty, fl_ty)
+                                Err(format!("unmatch type: {:?} and {:?}", tr_ty, fl_ty))
                             }
                         } else {
-                            panic!("if condition must be Bool")
+                            Err(format!("if condition must be Bool"))
                         }
                     },
-                    _ => panic!("if condition must be Bool")
+                    _ => Err(format!("if condition must be Bool"))
                 }
             },
             &Expr::Equal(box ref e1, box ref e2) |
             &Expr::NotEqual(box ref e1, box ref e2) |
             &Expr::LessThan(box ref e1, box ref e2) |
             &Expr::GreaterThan(box ref e1, box ref e2) => {
-                match (e1.type_of(context), e2.type_of(context)) {
+                match (try!(e1.type_of(context)), try!(e2.type_of(context))) {
                     (Type::Primitive(l), Type::Primitive(r)) => {
                         if l == r {
-                            Type::Primitive("Bool".to_string())
+                            Ok(Type::Primitive("Bool".to_string()))
                         } else {
-                            panic!("unmatch types : {:?} and {:?}", l, r)
+                            Err(format!("unmatch types : {:?} and {:?}", l, r))
                         }
                     },
-                    _ => panic!("non primitive value!!"),
+                    _ => Err(format!("non primitive value!!")),
                 }
             },
             &Expr::Add(box ref e1, box ref e2) |
             &Expr::Sub(box ref e1, box ref e2) |
             &Expr::Mult(box ref e1, box ref e2) |
             &Expr::Div(box ref e1, box ref e2) => {
-                match (e1.type_of(context), e2.type_of(context)) {
+                match (try!(e1.type_of(context)), try!(e2.type_of(context))) {
                     (Type::Primitive(l), Type::Primitive(r)) => {
                         if l == r  && l == "Int".to_string() {
-                            Type::Primitive("Int".to_string())
+                            Ok(Type::Primitive("Int".to_string()))
                         } else {
-                            panic!("can not add non numeric values")
+                            Err(format!("can not add non numeric values"))
                         }
                     },
-                    _ => panic!("can not ass non numeric values")
+                    _ => Err(format!("can not ass non numeric values"))
                 }
             },
             &Expr::Record(ref v) => {
-                Type::Record(v.iter().map(|e| {
-                    (e.0.clone(), box e.1.type_of(context))
-                }).collect())
+                let mut branches = vec![];
+                for &(ref label, box ref expr) in v {
+                    branches.push((label.clone(), box try!(expr.type_of(context))))
+                }
+                Ok(Type::Record(branches))
             },
             &Expr::Variant(ref tag, box ref e, box ref ty) => {
                 match Expr::desugar_type(ty, context) {
@@ -321,38 +326,38 @@ impl Expr {
                             e.0 == tag.clone()
                         });
                         if let Some(branch) = found {
-                            let e_ty = Expr::desugar_type(&e.type_of(context), context);
+                            let e_ty = Expr::desugar_type(&try!(e.type_of(context)), context);
                             let branch_ty = Expr::desugar_type(branch.1.as_ref(), context);
                             if e_ty == branch_ty {
-                                ty.clone()
+                                Ok(ty.clone())
                             } else {
-                                panic!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, e_ty, branch.1)
+                                Err(format!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, e_ty, branch.1))
                             }
                         } else {
-                            panic!("not found such tag {} in variant {:?}", tag, ty)
+                            Err(format!("not found such tag {} in variant {:?}", tag, ty))
                         }
                     },
-                    _ => panic!("variant type specifier must be variant type")
+                    _ => Err(format!("variant type specifier must be variant type"))
                 }
             },
             &Expr::Dot(box ref e, ref label) => {
-                match e.type_of(context) {
+                match try!(e.type_of(context)) {
                     Type::Record(branches) => {
                         if let Some(branch) = branches.iter().find(|e| {
                             e.0 == label.clone()
                         }) {
-                            *branch.1.clone()
+                            Ok(*branch.1.clone())
                         } else {
-                            panic!("not found such filed in {:?} : {}", e, label)
+                            Err(format!("not found such filed in {:?} : {}", e, label))
                         }
                     },
-                    _ => panic!("can not apply dot operator for non record")
+                    _ => Err(format!("can not apply dot operator for non record"))
                 }
             },
             &Expr::Match(box ref e, ref branches) => Expr::match_typecheck(e, branches, context),
             &Expr::Println(box ref e) => {
-                e.type_of(context);
-                Type::Primitive("Unit".to_string())
+                try!(e.type_of(context));
+                Ok(Type::Primitive("Unit".to_string()))
             },
             &Expr::TypeAlias(ref name, box ref ty, box ref e) => {
                 let new_context = context.add(name, &Expr::desugar_type(&ty, context));
@@ -365,35 +370,33 @@ impl Expr {
     fn match_typecheck(
         e: &Expr,
         branches: &Vec<(String, String, Box<Expr>)>,
-        context: &Context<Type>) -> Type
+        context: &Context<Type>) -> Result<Type, String>
     {
-        let expr_branches = match e {
-            &Expr::Variant(_, _, box ref ty) => {
-                match Expr::desugar_type(ty, context) {
-                    Type::Variant(v) => v.clone(),
-                    _ => panic!("type error variant expr must have variant type"),
+        let e_ty = Expr::desugar_type(&try!(e.type_of(context)), context);
+        let mut ret_ty = None;
+        if let Type::Variant(v) = e_ty {
+            // v: Vec<(String, Box<Type>)>
+            // branches: &Vec<(String, String, Box<Expr)>
+            for (idx, (label, box ty)) in v.into_iter().enumerate() {
+                let ref branch = branches[idx];
+                if label != branch.0 {
+                    return Err(format!("not match label: {} and {}", label, branches[idx].0))
                 }
-            },
-            _ => panic!("type error: can not match for non variant expr"),
-        };
-        let labels: Vec<_> = branches.iter().map(|x| x.0.clone()).collect();
-        let mut ret_types = vec![];
-        for label in labels {
-            let expr_branch: &(String, Box<Type>) = expr_branches.iter().find(|x| {
-                x.0 == label
-            }).unwrap();
-            let body_branch: &(String, String, Box<Expr>) = branches.iter().find(|x| {
-                x.0 == label
-            }).unwrap();
-            let new_context = context.add(&body_branch.1, &Expr::desugar_type(&*expr_branch.1, context));
-            ret_types.push(body_branch.2.type_of(&new_context));
-        }
-        if ret_types.iter().all(|x| {
-            x.clone() == ret_types[0]
-        }) {
-            ret_types[0].clone()
+                let new_context = context.add(&branch.1, &Expr::desugar_type(&ty, context));
+                let ty = try!(branch.2.type_of(&new_context));
+                if ret_ty == None {
+                    ret_ty = Some(ty);
+                } else if ret_ty != Some(ty) {
+                    return Err(format!("can not much all match return types"))
+                }
+            }
+            if let Some(ty) = ret_ty {
+                Ok(ty)
+            } else {
+                Err(format!("no branches"))
+            }
         } else {
-            panic!("can not much all match return types")
+            Err(format!("type error: can not match for non variant expr"))
         }
      }
 
