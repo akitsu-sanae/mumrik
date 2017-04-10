@@ -72,7 +72,7 @@ fn compare() {
 
 #[test]
 fn record() {
-    let e = expr("[* id=42, value=123 *]").unwrap();
+    let e = expr("{id:Int, value:Int}{ id=42, value=123 }").unwrap();
     assert_eq!(e, Expr::Record(vec![
         ("id".to_string(), box Expr::Number(42)),
         ("value".to_string(), box Expr::Number(123))]));
@@ -83,7 +83,7 @@ fn record() {
 
 #[test]
 fn dot() {
-    let e = expr("[* id=42, value=123 *].id").unwrap();
+    let e = expr("{id:Int, value:Int}{ id=42, value=123 }.id").unwrap();
     assert_eq!(e, Expr::Dot(
             box Expr::Record(vec![
                 ("id".to_string(), box Expr::Number(42)),

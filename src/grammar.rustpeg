@@ -20,7 +20,7 @@ variant_type -> Type
   }
 
 record_type -> Type
-  = LEFT_RECORD branches:type_branch* RIGHT_RECORD {
+  = LEFT_BRACE branches:type_branch* RIGHT_BRACE {
       Type::Record(branches)
   }
 
@@ -155,7 +155,7 @@ variant_expr -> Expr
   }
 
 record_expr -> Expr
-  = LEFT_RECORD branches:branch* RIGHT_RECORD {
+  = ty:type_ LEFT_BRACE branches:branch* RIGHT_BRACE {
       Expr::Record(branches)
   }
 
@@ -193,8 +193,6 @@ RIGHT_PAREN = ")" __
 LEFT_ANGLE_BRACKET = "<" __
 RIGHT_ANGLE_BRACKET = ">" __
 BAR = "|" __
-LEFT_RECORD = "[*" __
-RIGHT_RECORD = "*]" __
 
 keyword<E> = E !([a-zA-Z0-9_]) __
 
