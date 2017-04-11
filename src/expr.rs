@@ -7,6 +7,7 @@ pub enum Expr {
     Number(i64),
     Bool(bool),
     Unit,
+    List(Vec<Expr>),
     Var(String),
     Lambda(String, Box<Type>, Box<Expr>),
     Apply(Box<Expr>, Box<Expr>),
@@ -195,6 +196,20 @@ impl Expr {
             &Expr::Number(_) => Ok(Type::Primitive("Int".to_string())),
             &Expr::Bool(_) => Ok(Type::Primitive("Bool".to_string())),
             &Expr::Unit => Ok(Type::Primitive("Unit".to_string())),
+            &Expr::List(ref exprs) => {
+                let mut inner_ty = None;
+                for expr in exprs {
+                    let e_ty = try!(expr.type_of(context));
+                    if inner_ty.is_some() {
+                        if inner_ty.as_ref().unwrap() != &e_ty {
+                            return Err(format!("not match type: {:?} and {:?}", inner_ty.unwrap(), e_ty))
+                        }
+                    } else {
+                        inner_ty = Some(e_ty)
+                    }
+                }
+                Ok(Type::List(box inner_ty.unwrap()))
+            },
             &Expr::Var(ref name) => context.lookup(name),
             &Expr::Lambda(ref name, box ref ty, box ref e) => {
                 let ty = Expr::desugar_type(ty, context);
@@ -391,6 +406,7 @@ impl Expr {
             &Expr::Lambda(_, _, _) => true,
             &Expr::Record(_) => true,
             &Expr::Variant(_, _, _) => true,
+            &Expr::List(_) => true,
             _ => false,
         }
     }

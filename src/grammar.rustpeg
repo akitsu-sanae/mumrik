@@ -123,6 +123,7 @@ factor -> Expr
   / variant_expr
   / record_expr
   / tuple_expr
+  / list_expr
   / variable_expr
   / paren_expr
 
@@ -170,6 +171,13 @@ tuple_expr -> Expr
       Expr::Record(branches)
   }
 
+list_expr -> Expr
+  = LEFT_BRACKET head:expr tail:(COMMA e:expr { e })* RIGHT_BRACKET {
+      let mut exprs = tail;
+      exprs.insert(0, head);
+      Expr::List(exprs)
+  }
+
 variable_expr -> Expr
   = name:identifier { Expr::Var(name.clone()) }
 
@@ -201,8 +209,11 @@ LEFT_BRACE = "{" __
 RIGHT_BRACE = "}" __
 LEFT_PAREN = "(" __
 RIGHT_PAREN = ")" __
+LEFT_BRACKET = "[" __
+RIGHT_BRACKET = "]" __
 LEFT_ANGLE_BRACKET = "<" __
 RIGHT_ANGLE_BRACKET = ">" __
+
 BAR = "|" __
 
 keyword<E> = E !([a-zA-Z0-9_]) __
