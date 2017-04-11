@@ -13,7 +13,6 @@ pub enum Expr {
     Sequence(Box<Expr>, Box<Expr>),
     Let(String, Box<Expr>, Box<Expr>),
     LetRec(String, Box<Type>, Box<Expr>, Box<Expr>),
-    Fix(Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Equal(Box<Expr>, Box<Expr>),
     NotEqual(Box<Expr>, Box<Expr>),
@@ -61,21 +60,6 @@ impl Expr {
             &Expr::LetRec(ref name, _, box ref init, box ref body) => {
                 let new_context = context.add(name, init);
                 body.eval(&new_context)
-            },
-            &Expr::Fix(box ref e) => {
-                match try!(e.eval(context)) {
-                    Expr::Lambda(name, _, box body) => {
-                        let new_context = context.add(&name, e);
-                        body.eval(&new_context)
-                    },
-                    _ => {
-                        if e.is_value() {
-                            Ok(e.clone())
-                        } else {
-                            e.eval(context)
-                        }
-                    },
-                }
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 Expr::Apply(
@@ -244,19 +228,6 @@ impl Expr {
                     Err(format!("type error: not match {:?}", ty))
                 }
             }
-            &Expr::Fix(box ref e) => {
-                let t = try!(e.type_of(context));
-                match t.clone() {
-                    Type::Function(box ty1, box ty2) => {
-                        if ty1 == ty2 {
-                            Ok(ty1)
-                        } else {
-                            Err(format!("can not apply fix to this type: {:?}", t))
-                        }
-                    },
-                    _ => Err(format!("can not fix unfunctional type")),
-                }
-            },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 if try!(e1.type_of(context)) == Type::Primitive("Unit".to_string()) {
                     e2.type_of(context)
