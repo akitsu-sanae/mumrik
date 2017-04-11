@@ -122,6 +122,7 @@ factor -> Expr
   / println_expr
   / variant_expr
   / record_expr
+  / tuple_expr
   / variable_expr
   / paren_expr
 
@@ -156,6 +157,16 @@ variant_expr -> Expr
 
 record_expr -> Expr
   = ty:type_ LEFT_BRACE branches:branch* RIGHT_BRACE {
+      Expr::Record(branches)
+  }
+
+tuple_expr -> Expr
+  = LEFT_PAREN head:expr tail:(COMMA e:expr { e })+ RIGHT_PAREN {
+      let mut exprs = tail;
+      exprs.insert(0, head);
+      let branches: Vec<_> = exprs.into_iter().enumerate().map(|(i, e)| {
+              (i.to_string(), box e)
+              }).collect();
       Expr::Record(branches)
   }
 

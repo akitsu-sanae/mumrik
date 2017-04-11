@@ -82,6 +82,20 @@ fn record() {
 }
 
 #[test]
+fn tuple() {
+    let e = expr("(1, 2, 3)").unwrap();
+    assert_eq!(e, Expr::Record(vec![
+        ("0".to_string(), box Expr::Number(1)),
+        ("1".to_string(), box Expr::Number(2)),
+        ("2".to_string(), box Expr::Number(3))]));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Record(vec![
+        ("0".to_string(), box Expr::Number(1)),
+        ("1".to_string(), box Expr::Number(2)),
+        ("2".to_string(), box Expr::Number(3))])));
+}
+
+
+#[test]
 fn dot() {
     let e = expr("{id:Int, value:Int}{ id=42, value=123 }.id").unwrap();
     assert_eq!(e, Expr::Dot(
