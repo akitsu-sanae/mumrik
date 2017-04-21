@@ -6,6 +6,7 @@ use type_::Type;
 pub enum Expr {
     Number(i64),
     Bool(bool),
+    Char(char),
     Unit,
     List(Vec<Expr>),
     Var(String),
@@ -195,6 +196,7 @@ impl Expr {
         match self {
             &Expr::Number(_) => Ok(Type::Primitive("Int".to_string())),
             &Expr::Bool(_) => Ok(Type::Primitive("Bool".to_string())),
+            &Expr::Char(_) => Ok(Type::Primitive("Char".to_string())),
             &Expr::Unit => Ok(Type::Primitive("Unit".to_string())),
             &Expr::List(ref exprs) => {
                 let mut inner_ty = None;
@@ -401,7 +403,7 @@ impl Expr {
 
     fn is_value(&self) -> bool {
         match self {
-            &Expr::Number(_) | &Expr::Bool(_) => true,
+            &Expr::Number(_) | &Expr::Bool(_) | &Expr::Char(_) => true,
             &Expr::Unit => true,
             &Expr::Lambda(_, _, _) => true,
             &Expr::Record(_) => true,

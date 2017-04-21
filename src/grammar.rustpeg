@@ -117,6 +117,8 @@ dot_expr -> Expr
 factor -> Expr
   = lambda_expr
   / number_expr
+  / char_expr
+  / string_expr
   / boolean_expr
   / unit_expr
   / println_expr
@@ -134,6 +136,15 @@ lambda_expr -> Expr
 
 number_expr -> Expr
   = n:$([0-9]+) __ { Expr::Number(i64::from_str_radix(n, 10).unwrap()) }
+
+char_expr -> Expr
+  = SINGLE_QUOTE c:$(.) SINGLE_QUOTE { Expr::Char(c.chars().nth(0).unwrap()) }
+
+string_expr -> Expr
+  = DOUBLE_QUOTE s:$([^"]*) DOUBLE_QUOTE {
+      let chars = s.chars().map(|c| Expr::Char(c)).collect();
+      Expr::List(chars)
+  }
 
 boolean_expr -> Expr
   = TRUE { Expr::Bool(true) }
@@ -203,6 +214,8 @@ DOT = "."
 COLON = ":" __
 DOUBLE_COLON = "::" __
 SEMICOLON = ";" __
+SINGLE_QUOTE = "'" __
+DOUBLE_QUOTE = "\"" __
 ARROW = "->" __
 FAT_ARROW = "=>" __
 LEFT_BRACE = "{" __

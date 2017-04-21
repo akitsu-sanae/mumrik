@@ -141,6 +141,24 @@ fn list() {
 }
 
 #[test]
+fn string() {
+    let e = expr("\"nyan\"").unwrap();
+    assert_eq!(e, Expr::List(vec![
+        Expr::Char('n'),
+        Expr::Char('y'),
+        Expr::Char('a'),
+        Expr::Char('n')
+    ]));
+    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Primitive("Char".to_string()))));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::List(vec![
+        Expr::Char('n'),
+        Expr::Char('y'),
+        Expr::Char('a'),
+        Expr::Char('n')
+    ])));
+}
+
+#[test]
 fn match_() {
     let e = expr("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
     assert_eq!(e, Expr::TypeAlias(
