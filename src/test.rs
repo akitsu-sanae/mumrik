@@ -125,6 +125,22 @@ fn variant() {
 }
 
 #[test]
+fn list() {
+    let e = expr("[1, 2, 3]").unwrap();
+    assert_eq!(e, Expr::List(vec![
+        Expr::Number(1),
+        Expr::Number(2),
+        Expr::Number(3)
+    ]));
+    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Primitive("Int".to_string()))));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::List(vec![
+        Expr::Number(1),
+        Expr::Number(2),
+        Expr::Number(3)
+    ])));
+}
+
+#[test]
 fn match_() {
     let e = expr("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
     assert_eq!(e, Expr::TypeAlias(
