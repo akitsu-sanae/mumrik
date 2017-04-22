@@ -65,7 +65,7 @@ impl Expr {
             },
             &Expr::Sequence(box ref e1, box ref e2) => {
                 Expr::Apply(
-                    box Expr::Lambda("_".to_string(), box Type::Primitive("Unit".to_string()), box e2.clone()),
+                    box Expr::Lambda("_".to_string(), box Type::Unit, box e2.clone()),
                     box e1.clone()).eval(context)
             },
             &Expr::If(box ref cond, box ref tr, box ref fl) => {
@@ -194,10 +194,10 @@ impl Expr {
 
     pub fn type_of(&self, context: &Context<Type>) -> Result<Type, String> {
         match self {
-            &Expr::Number(_) => Ok(Type::Primitive("Int".to_string())),
-            &Expr::Bool(_) => Ok(Type::Primitive("Bool".to_string())),
-            &Expr::Char(_) => Ok(Type::Primitive("Char".to_string())),
-            &Expr::Unit => Ok(Type::Primitive("Unit".to_string())),
+            &Expr::Number(_) => Ok(Type::Int),
+            &Expr::Bool(_) => Ok(Type::Bool),
+            &Expr::Char(_) => Ok(Type::Char),
+            &Expr::Unit => Ok(Type::Unit),
             &Expr::List(ref exprs) => {
                 let mut inner_ty = None;
                 for expr in exprs {
@@ -246,7 +246,7 @@ impl Expr {
                 }
             }
             &Expr::Sequence(box ref e1, box ref e2) => {
-                if try!(e1.type_of(context)) == Type::Primitive("Unit".to_string()) {
+                if try!(e1.type_of(context)) == Type::Unit {
                     e2.type_of(context)
                 } else {
                     Err(format!("{:?} is not unit type", e1))
@@ -254,35 +254,30 @@ impl Expr {
             },
             &Expr::If(box ref cond, box ref tr, box ref fl) => {
                 match try!(cond.type_of(context)) {
-                    Type::Primitive(c) => {
-                        if c == "Bool" {
-                            let tr_ty = try!(tr.type_of(context));
-                            let fl_ty = try!(fl.type_of(context));
-                            if tr_ty == fl_ty {
-                                Ok(tr_ty)
-                            } else {
-                                Err(format!("unmatch type: {:?} and {:?}", tr_ty, fl_ty))
-                            }
+                    Type::Bool => {
+                        let tr_ty = try!(tr.type_of(context));
+                        let fl_ty = try!(fl.type_of(context));
+                        if tr_ty == fl_ty {
+                            Ok(tr_ty)
                         } else {
-                            Err(format!("if condition must be Bool"))
+                            Err(format!("unmatch type: {:?} and {:?}", tr_ty, fl_ty))
                         }
                     },
-                    _ => Err(format!("if condition must be Bool"))
+                    _ => Err(format!("if condition must be bool")),
                 }
             },
             &Expr::Equal(box ref e1, box ref e2) |
-            &Expr::NotEqual(box ref e1, box ref e2) |
+            &Expr::NotEqual(box ref e1, box ref e2) => {
+                match (try!(e1.type_of(context)), try!(e2.type_of(context))) {
+                    (Type::Int, Type::Int) | (Type::Bool, Type::Bool) | (Type::Char, Type::Char) => Ok(Type::Bool),
+                    (l, r) => Err(format!("can not compare {:?} and {:?}", l, r))
+                }
+            },
             &Expr::LessThan(box ref e1, box ref e2) |
             &Expr::GreaterThan(box ref e1, box ref e2) => {
                 match (try!(e1.type_of(context)), try!(e2.type_of(context))) {
-                    (Type::Primitive(l), Type::Primitive(r)) => {
-                        if l == r {
-                            Ok(Type::Primitive("Bool".to_string()))
-                        } else {
-                            Err(format!("unmatch types : {:?} and {:?}", l, r))
-                        }
-                    },
-                    _ => Err(format!("non primitive value!!")),
+                    (Type::Int, Type::Int) | (Type::Char, Type::Char) => Ok(Type::Bool),
+                    (l, r) => Err(format!("can not compare {:?} and {:?}", l, r))
                 }
             },
             &Expr::Add(box ref e1, box ref e2) |
@@ -290,14 +285,8 @@ impl Expr {
             &Expr::Mult(box ref e1, box ref e2) |
             &Expr::Div(box ref e1, box ref e2) => {
                 match (try!(e1.type_of(context)), try!(e2.type_of(context))) {
-                    (Type::Primitive(l), Type::Primitive(r)) => {
-                        if l == r  && l == "Int".to_string() {
-                            Ok(Type::Primitive("Int".to_string()))
-                        } else {
-                            Err(format!("can not add non numeric values"))
-                        }
-                    },
-                    _ => Err(format!("can not ass non numeric values"))
+                    (Type::Int, Type::Int) => Ok(Type::Int),
+                    _ => Err(format!("can not add non numeric values"))
                 }
             },
             &Expr::Record(ref v) => {
@@ -345,7 +334,7 @@ impl Expr {
             &Expr::Match(box ref e, ref branches) => Expr::match_typecheck(e, branches, context),
             &Expr::Println(box ref e) => {
                 try!(e.type_of(context));
-                Ok(Type::Primitive("Unit".to_string()))
+                Ok(Type::Unit)
             },
             &Expr::TypeAlias(ref name, box ref ty, box ref e) => {
                 let new_context = context.add(name, &Expr::desugar_type(&ty, context));
@@ -390,7 +379,7 @@ impl Expr {
 
     fn desugar_type(ty: &Type, context: &Context<Type>) -> Type {
         match ty {
-            &Type::Primitive(ref x) => {
+            &Type::Variable(ref x) => {
                 if let Ok(ty) = context.lookup(x) {
                     ty
                 } else {

@@ -31,10 +31,11 @@ function_type -> Type
   / primitive_type
 
 primitive_type -> Type
-  = name:identifier {
-      Type::Primitive(name)
-  }
-
+  = INT { Type::Int }
+  / BOOL { Type::Bool }
+  / CHAR { Type::Char }
+  / UNIT_T { Type::Unit }
+  / name:identifier { Type::Variable(name) }
 
 pub expr -> Expr
   = __ e:type_alias { e }
@@ -151,7 +152,7 @@ boolean_expr -> Expr
   / FALSE { Expr::Bool(false) }
 
 unit_expr -> Expr
-  = UNIT { Expr::Unit }
+  = UNIT_V { Expr::Unit }
 
 println_expr -> Expr
   = PRINTLN e:inner_expr { Expr::Println(box e) }
@@ -244,4 +245,9 @@ TYPE = keyword<"type">
 TRUE = keyword<"true">
 FALSE = keyword<"false">
 
-UNIT = keyword<"unit">
+INT = keyword<"Int">
+BOOL = keyword<"Bool">
+CHAR = keyword<"Char">
+UNIT_T = keyword<"UNIT">
+
+UNIT_V = keyword<"unit">

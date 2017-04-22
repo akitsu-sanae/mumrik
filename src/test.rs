@@ -16,7 +16,7 @@ fn literal() {
 fn apply() {
     let e = expr("(func x: Int => x) 1").unwrap();
     assert_eq!(e, Expr::Apply(
-            box Expr::Lambda("x".to_string(), box Type::Primitive("Int".to_string()), box Expr::Var("x".to_string())),
+            box Expr::Lambda("x".to_string(), box Type::Int, box Expr::Var("x".to_string())),
             box Expr::Number(1)));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(1)));
 }
@@ -112,16 +112,16 @@ fn variant() {
     assert_eq!(e, Expr::TypeAlias(
             "Nyan".to_string(),
             box Type::Variant(vec![
-                ("Hoge".to_string(), box Type::Primitive("Int".to_string())),
-                ("Fuga".to_string(), box Type::Primitive("Bool".to_string()))]),
+                ("Hoge".to_string(), box Type::Int),
+                ("Fuga".to_string(), box Type::Bool)]),
             box Expr::Variant(
                 "Hoge".to_string(),
                 box Expr::Number(42),
-                box Type::Primitive("Nyan".to_string()))));
+                box Type::Variable("Nyan".to_string()))));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::Variant(
             "Hoge".to_string(),
             box Expr::Number(42),
-            box Type::Primitive("Nyan".to_string()))));
+            box Type::Variable("Nyan".to_string()))));
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn list() {
         Expr::Number(2),
         Expr::Number(3)
     ]));
-    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Primitive("Int".to_string()))));
+    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Int)));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::List(vec![
         Expr::Number(1),
         Expr::Number(2),
@@ -149,7 +149,7 @@ fn string() {
         Expr::Char('a'),
         Expr::Char('n')
     ]));
-    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Primitive("Char".to_string()))));
+    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Char)));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::List(vec![
         Expr::Char('n'),
         Expr::Char('y'),
@@ -164,13 +164,13 @@ fn match_() {
     assert_eq!(e, Expr::TypeAlias(
             "Nyan".to_string(),
             box Type::Variant(vec![
-                  ("Hoge".to_string(), box Type::Primitive("Int".to_string())),
-                  ("Fuga".to_string(), box Type::Primitive("Bool".to_string()))]),
+                  ("Hoge".to_string(), box Type::Int),
+                  ("Fuga".to_string(), box Type::Bool)]),
             box Expr::Match(
                 box Expr::Variant(
                     "Hoge".to_string(),
                     box Expr::Number(42),
-                    box Type::Primitive("Nyan".to_string())),
+                    box Type::Variable("Nyan".to_string())),
                 vec![
                     ("Hoge".to_string(), "x".to_string(),
                     box Expr::Add(
@@ -203,7 +203,7 @@ fn func() {
             "f".to_string(),
             box Expr::Lambda(
                 "a".to_string(),
-                box Type::Primitive("Int".to_string()),
+                box Type::Int,
                 box Expr::Add(
                     box Expr::Var("a".to_string()),
                     box Expr::Number(12))),
@@ -220,11 +220,11 @@ fn rec_func() {
     assert_eq!(e, Expr::LetRec(
             "fib".to_string(),
             box Type::Function(
-                box Type::Primitive("Int".to_string()),
-                box Type::Primitive("Int".to_string())),
+                box Type::Int,
+                box Type::Int),
             box Expr::Lambda(
                 "x".to_string(),
-                box Type::Primitive("Int".to_string()),
+                box Type::Int,
                 box Expr::If(
                     box Expr::LessThan(
                         box Expr::Var("x".to_string()),
