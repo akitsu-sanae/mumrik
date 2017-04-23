@@ -132,7 +132,7 @@ fn list() {
         Expr::Number(2),
         Expr::Number(3)
     ]));
-    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Int)));
+    assert_eq!(Type::from_expr(&e, &Context::new()), Ok(Type::List(box Type::Int)));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::List(vec![
         Expr::Number(1),
         Expr::Number(2),
@@ -149,7 +149,7 @@ fn string() {
         Expr::Char('a'),
         Expr::Char('n')
     ]));
-    assert_eq!(e.type_of(&Context::new()), Ok(Type::List(box Type::Char)));
+    assert_eq!(Type::from_expr(&e, &Context::new()), Ok(Type::List(box Type::Char)));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::List(vec![
         Expr::Char('n'),
         Expr::Char('y'),

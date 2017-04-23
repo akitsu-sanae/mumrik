@@ -16,6 +16,7 @@ use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::fs::File;
+use type_::Type;
 use context::Context;
 
 fn main() {
@@ -57,7 +58,7 @@ fn exec(src: &str) {
     match parse::expr(src) {
         Ok(expr) => {
             println!("expr: {:?}", expr);
-            println!("type: {:?}", expr.type_of(&Context::new()));
+            println!("type: {:?}", Type::from_expr(&expr, &Context::new()));
             println!("value: {:?}", expr.eval(&Context::new()));
         },
         Err(err) => {
