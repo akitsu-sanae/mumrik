@@ -1,4 +1,4 @@
-
+use std::collections::HashMap;
 use context::Context;
 use expr::Expr;
 
@@ -33,10 +33,9 @@ impl Type {
             },
             Expr::Var(ref name) => context.lookup(name),
             Expr::Lambda(ref name, box ref ty, box ref e) => {
-                let ty = ty.desugar(context);
                 let new_context = context.add(name, &ty);
                 let ret_ty = try!(Type::from_expr(e, &new_context));
-                Ok(Type::Function(box ty, box ret_ty))
+                Ok(Type::Function(box ty.clone(), box ret_ty))
             },
             Expr::Apply(box ref e1, box ref e2) => {
                 let param = try!(Type::from_expr(e2, context));
@@ -56,7 +55,6 @@ impl Type {
                 Type::from_expr(body, &new_context)
             },
             Expr::LetRec(ref name, box ref ty, box ref init, box ref body) => {
-                let ty = ty.desugar(context);
                 let new_context = context.add(name, &ty);
                 if Type::from_expr(init, &new_context) == Ok(ty.clone()) {
                     Type::from_expr(body, &new_context)
@@ -124,15 +122,13 @@ impl Type {
                 Ok(Type::Record(branches))
             },
             Expr::Variant(ref tag, box ref e, box ref ty) => {
-                let ty = ty.desugar(context);
                 if let Type::Variant(v) = ty.clone() {
                     let found = v.iter().find(|e| e.0 == tag.clone());
                     if let Some(branch) = found {
                         let e_ty = try!(Type::from_expr(e, context));
-                        let e_ty = e_ty.desugar(context);
-                        let branch_ty = branch.1.as_ref().desugar(context);
-                        if e_ty == branch_ty {
-                            Ok(ty)
+                        let ref branch_ty = branch.1;
+                        if &e_ty == branch_ty.as_ref() {
+                            Ok(ty.clone())
                         } else {
                             Err(format!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, e_ty, branch.1))
                         }
@@ -160,10 +156,6 @@ impl Type {
                 try!(Type::from_expr(e, context));
                 Ok(Type::Unit)
             },
-            Expr::TypeAlias(ref name, box ref ty, box ref e) => {
-                let new_context = context.add(name, &ty.desugar(context));
-                Type::from_expr(e, &new_context)
-            }
         }
     }
 
@@ -172,7 +164,7 @@ impl Type {
         branches: &Vec<(String, String, Box<Expr>)>,
         context: &Context<Type>) -> Result<Type, String>
     {
-        let e_ty = try!(Type::from_expr(e, context)).desugar(context);
+        let e_ty = try!(Type::from_expr(e, context));
         let mut ret_ty = None;
         if let Type::Variant(v) = e_ty {
             for (idx, (label, box ty)) in v.into_iter().enumerate() {
@@ -180,7 +172,7 @@ impl Type {
                 if label != branch.0 {
                     return Err(format!("not match label: {} and {}", label, branch.0))
                 }
-                let new_context = context.add(&branch.1, &ty.desugar(context));
+                let new_context = context.add(&branch.1, &ty);
                 let ty = try!(Type::from_expr(&branch.2, &new_context));
                 if ret_ty == None {
                     ret_ty = Some(ty);
@@ -198,15 +190,13 @@ impl Type {
         }
     }
 
-    fn desugar(self: &Self, context: &Context<Type>) -> Type {
-        if let Type::Variable(ref x) = *self {
-            if let Ok(ty) = context.lookup(x) {
-                ty
-            } else {
-                self.clone()
-            }
-        } else {
-            self.clone()
+    pub fn subst(&mut self, alias: &HashMap<String, Type>) {
+        let name = match *self {
+            Type::Variable(ref name) => name.clone(),
+            _ => return
+        };
+        if let Some(ty) = alias.get(&name) {
+            *self = ty.clone();
         }
     }
 }

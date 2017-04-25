@@ -108,20 +108,20 @@ fn dot() {
 
 #[test]
 fn variant() {
-    let e = expr("type Nyan = | Hoge : Int, | Fuga: Bool Nyan::Hoge(42)").unwrap();
-    assert_eq!(e, Expr::TypeAlias(
-            "Nyan".to_string(),
-            box Type::Variant(vec![
-                ("Hoge".to_string(), box Type::Int),
-                ("Fuga".to_string(), box Type::Bool)]),
-            box Expr::Variant(
-                "Hoge".to_string(),
-                box Expr::Number(42),
-                box Type::Variable("Nyan".to_string()))));
+    let (mut e, alias) = program("type Nyan = | Hoge : Int, | Fuga: Bool Nyan::Hoge(42)").unwrap();
+    e.subst_typealias(&alias);
+    let nyan_ty = Type::Variant(vec![
+        ("Hoge".to_string(), box Type::Int),
+        ("Fuga".to_string(), box Type::Bool)
+    ]);
+    assert_eq!(e, Expr::Variant(
+            "Hoge".to_string(),
+            box Expr::Number(42),
+            box nyan_ty.clone()));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::Variant(
             "Hoge".to_string(),
             box Expr::Number(42),
-            box Type::Variable("Nyan".to_string()))));
+            box nyan_ty)));
 }
 
 #[test]
@@ -160,27 +160,27 @@ fn string() {
 
 #[test]
 fn match_() {
-    let e = expr("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
-    assert_eq!(e, Expr::TypeAlias(
-            "Nyan".to_string(),
-            box Type::Variant(vec![
-                  ("Hoge".to_string(), box Type::Int),
-                  ("Fuga".to_string(), box Type::Bool)]),
-            box Expr::Match(
-                box Expr::Variant(
-                    "Hoge".to_string(),
-                    box Expr::Number(42),
-                    box Type::Variable("Nyan".to_string())),
-                vec![
-                    ("Hoge".to_string(), "x".to_string(),
-                    box Expr::Add(
-                        box Expr::Var("x".to_string()),
-                        box Expr::Number(1))),
-                    ("Fuga".to_string(), "x".to_string(),
-                    box Expr::If(
-                        box Expr::Var("x".to_string()),
-                        box Expr::Number(100),
-                        box Expr::Number(200)))])));
+    let (mut e, alias) = program("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
+    e.subst_typealias(&alias);
+    let nyan_ty = Type::Variant(vec![
+        ("Hoge".to_string(), box Type::Int),
+        ("Fuga".to_string(), box Type::Bool)
+    ]);
+    assert_eq!(e, Expr::Match(
+            box Expr::Variant(
+                "Hoge".to_string(),
+                box Expr::Number(42),
+                box nyan_ty),
+            vec![
+                ("Hoge".to_string(), "x".to_string(),
+                box Expr::Add(
+                    box Expr::Var("x".to_string()),
+                    box Expr::Number(1))),
+                ("Fuga".to_string(), "x".to_string(),
+                box Expr::If(
+                    box Expr::Var("x".to_string()),
+                    box Expr::Number(100),
+                    box Expr::Number(200)))]));
     assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(43)));
 }
 

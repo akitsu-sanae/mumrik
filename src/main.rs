@@ -34,8 +34,10 @@ fn main() {
 peg_file! parse("grammar.rustpeg");
 
 fn exec(src: &str) {
-    match parse::expr(src) {
-        Ok(expr) => {
+    match parse::program(src) {
+        Ok((expr, type_aliases)) => {
+            let mut expr = expr;
+            expr.subst_typealias(&type_aliases);
             let ty = Type::from_expr(&expr, &Context::new()).expect("type error");
             let value = expr.eval(&Context::new()).expect("invalid operation");
             println!("{:?}: {:?}", value, ty);

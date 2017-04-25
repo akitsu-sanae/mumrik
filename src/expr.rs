@@ -1,4 +1,4 @@
-
+use std::collections::HashMap;
 use context::Context;
 use type_::Type;
 
@@ -32,7 +32,6 @@ pub enum Expr {
     //     Fuga x => x * 3,
     // }
     Match(Box<Expr>, Vec<(String, String, Box<Expr>)>),
-    TypeAlias(String, Box<Type>, Box<Expr>),
     Println(Box<Expr>),
 }
 
@@ -186,9 +185,56 @@ impl Expr {
                     Err(e) => Err(e)
                 }
                             },
-            &Expr::TypeAlias(_, _, box ref e) => e.eval(context),
             &Expr::Var(ref name) => context.lookup(name),
             _ => Ok(self.clone()),
+        }
+    }
+
+    pub fn subst_typealias(&mut self, alias: &HashMap<String, Type>) {
+        use expr::Expr::*;
+        match *self {
+            List(ref mut exprs) => {
+                for expr in exprs {
+                    expr.subst_typealias(alias);
+                }
+            },
+            Lambda(_, box ref mut ty, box ref mut expr) |
+            Variant(_, box ref mut expr, box ref mut ty) => {
+                ty.subst(alias); expr.subst_typealias(alias)
+            },
+            LetRec(_, box ref mut ty, box ref mut e, box ref mut body) => {
+                ty.subst(alias);
+                e.subst_typealias(alias);
+                body.subst_typealias(alias);
+            },
+            If(box ref mut cond, box ref mut tr, box ref mut fl) => {
+                cond.subst_typealias(alias);
+                tr.subst_typealias(alias);
+                fl.subst_typealias(alias);
+            },
+            Let(_, box ref mut e1, box ref mut e2) |
+            Apply(box ref mut e1, box ref mut e2) |
+            Sequence(box ref mut e1, box ref mut e2) |
+            Equal(box ref mut e1, box ref mut e2) | NotEqual(box ref mut e1, box ref mut e2) |
+            LessThan(box ref mut e1, box ref mut e2) | GreaterThan(box ref mut e1, box ref mut e2) |
+            Add(box ref mut e1, box ref mut e2) | Sub(box ref mut e1, box ref mut e2) |
+            Mult(box ref mut e1, box ref mut e2) | Div(box ref mut e1, box ref mut e2) => {
+                e1.subst_typealias(alias);
+                e2.subst_typealias(alias);
+            },
+            Dot(box ref mut e, _) | Println(box ref mut e) => e.subst_typealias(alias),
+            Record(ref mut params) => {
+                for &mut (_, ref mut e) in params.iter_mut() {
+                    e.subst_typealias(alias);
+                }
+            },
+            Match(box ref mut e, ref mut branches) => {
+                e.subst_typealias(alias);
+                for &mut (_, _, box ref mut e) in branches {
+                    e.subst_typealias(alias)
+                }
+            },
+            Number(_) | Bool(_) | Char(_) | Unit | Var(_) => (),
         }
     }
 

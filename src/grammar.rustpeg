@@ -1,8 +1,20 @@
 use std::str;
 use std::i64;
+use std::collections::HashMap;
+use std::iter::FromIterator;
 
 use super::expr::*;
 use super::type_::Type;
+
+pub program -> (Expr, HashMap<String, Type>)
+  = ty_aliases:type_aliass e:expr {
+      (e, ty_aliases)
+  }
+
+type_aliass -> HashMap<String, Type>
+  = aliases:(TYPE name:identifier EQUAL ty:type_ { (name, ty) })* {
+      HashMap::from_iter(aliases.into_iter())
+  }
 
 type_ -> Type
   = variant_type
@@ -38,13 +50,7 @@ primitive_type -> Type
   / name:identifier { Type::Variable(name) }
 
 pub expr -> Expr
-  = __ e:type_alias { e }
-
-type_alias -> Expr
-  = TYPE name:identifier EQUAL ty:type_ after:expr {
-      Expr::TypeAlias(name, box ty, box after)
-  }
-  / func_expr
+  = __ e:func_expr { e }
 
 func_expr -> Expr
   = FUNC name:identifier arg:identifier COLON arg_ty:type_ LEFT_BRACE body:let_expr RIGHT_BRACE after:expr {
