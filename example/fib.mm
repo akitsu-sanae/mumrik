@@ -3,5 +3,5 @@ rec func fib x: Int :Int {
     else { fib (x-1) + fib (x-2) }
 }
 
-println fib 8
+fib 8
 
