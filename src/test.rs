@@ -108,7 +108,7 @@ fn dot() {
 
 #[test]
 fn variant() {
-    let (mut e, alias) = program("type Nyan = | Hoge : Int, | Fuga: Bool Nyan::Hoge(42)").unwrap();
+    let (mut e, alias) = program("type Nyan = enum { Hoge : Int Fuga: Bool} Nyan::Hoge(42)").unwrap();
     e.subst_typealias(&alias);
     let nyan_ty = Type::Variant(vec![
         ("Hoge".to_string(), box Type::Int),
@@ -160,7 +160,7 @@ fn string() {
 
 #[test]
 fn match_() {
-    let (mut e, alias) = program("type Nyan = | Hoge: Int, | Fuga: Bool match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
+    let (mut e, alias) = program("type Nyan = enum { Hoge: Int Fuga: Bool} match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
     e.subst_typealias(&alias);
     let nyan_ty = Type::Variant(vec![
         ("Hoge".to_string(), box Type::Int),

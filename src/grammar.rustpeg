@@ -27,7 +27,7 @@ type_branch -> (String, Box<Type>)
   }
 
 variant_type -> Type
-  = branches:(BAR tag:identifier COLON ty:type_ COMMA? { (tag, box ty) })+ {
+  = ENUM LEFT_BRACE branches:(tag:identifier COLON ty:type_ COMMA? { (tag, box ty) })+ RIGHT_BRACE {
       Type::Variant(branches)
   }
 
@@ -247,6 +247,7 @@ FUNC = keyword<"func">
 REC = keyword<"rec">
 AS = keyword<"as">
 TYPE = keyword<"type">
+ENUM = keyword<"enum">
 
 TRUE = keyword<"true">
 FALSE = keyword<"false">
