@@ -40,7 +40,7 @@ fn exec(src: &str) {
             expr.subst_typealias(&type_aliases);
             let ty = Type::from_expr(&expr, &Context::new()).expect("type error");
             let value = expr.eval(&Context::new()).expect("invalid operation");
-            println!("{:?}: {:?}", value, ty);
+            println!("{}: {}", value, ty);
         },
         Err(err) => {
             let lines: Vec<_> = src.split('\n').collect();
