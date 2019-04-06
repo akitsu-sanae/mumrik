@@ -2,8 +2,8 @@
 name = "mumrik"
 version = "0.1.0"
 authors = ["akitsu <akitsu.sanae@gmail.com>"]
+build = "build.rs"
 
-[dependencies]
-peg = "0.5.1"
-peg-syntax-ext = "0.5.0"
+[build-dependencies]
+peg = { version = "0.5.7" }
 

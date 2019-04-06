@@ -1,12 +1,10 @@
-#![feature(plugin)]
-#![plugin(peg_syntax_ext)]
-
-
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
 mod expr;
+mod parser;
 mod context;
+mod program;
 mod type_;
 
 #[cfg(test)]
@@ -25,19 +23,20 @@ fn main() {
         f.read_to_string(&mut src)
     });
     if f.is_ok() {
-        exec(src.as_str())
+        exec(&src)
     } else {
-        println!("can not load file: {}", filename)
+        use std::process;
+        eprintln!("can not load file: {}", filename);
+        process::abort();
     }
 }
 
-peg_file! parse("grammar.rustpeg");
-
 fn exec(src: &str) {
-    match parse::program(src) {
-        Ok((expr, type_aliases)) => {
+    use program::Program;
+    match parser::parse(src) {
+        Ok(Program{expr, typ_aliases}) => {
             let mut expr = expr;
-            expr.subst_typealias(&type_aliases);
+            expr.subst_typealias(&typ_aliases);
             let ty = Type::from_expr(&expr, &Context::new()).expect("type error");
             let value = expr.eval(&Context::new()).expect("invalid operation");
             println!("{}: {}", value, ty);

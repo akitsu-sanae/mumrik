@@ -3,12 +3,16 @@ use std::i64;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
-use super::expr::*;
-use super::type_::Type;
+use expr::*;
+use program::*;
+use type_::Type;
 
-pub program -> (Expr, HashMap<String, Type>)
-  = ty_aliases:type_aliass e:expr {
-      (e, ty_aliases)
+pub program -> Program
+  = tys:type_aliass e:expr {
+    Program {
+      expr: e,
+      typ_aliases: tys
+    }
   }
 
 type_aliass -> HashMap<String, Type>
