@@ -1,15 +1,18 @@
-use std::collections::HashMap;
 use context::Context;
 use expr::Expr;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-    Int, Bool, Char, Unit,
+    Int,
+    Bool,
+    Char,
+    Unit,
     Variable(String),
     Function(Box<Type>, Box<Type>),
     Record(Vec<(String, Box<Type>)>),
     Variant(Vec<(String, Box<Type>)>),
-    List(Box<Type>)
+    List(Box<Type>),
 }
 
 use std::fmt;
@@ -23,24 +26,25 @@ impl fmt::Display for Type {
             Char => write!(f, "Char"),
             Unit => write!(f, "Unit"),
             Variable(ref name) => write!(f, "{}", name),
-            Function(box ref from, box ref to)
-                => write!(f, "{} -> {}", from, to),
+            Function(box ref from, box ref to) => write!(f, "{} -> {}", from, to),
             Record(ref data) => {
                 write!(f, "{{")?;
-                let tmp: Result<Vec<()>, _> = data.iter()
+                let tmp: Result<Vec<()>, _> = data
+                    .iter()
                     .map(|&(ref label, box ref ty)| write!(f, "{}: {}", label, ty))
                     .collect();
                 tmp?;
                 write!(f, "}}")
-            },
+            }
             Variant(ref data) => {
                 write!(f, "{{")?;
-                let tmp: Result<Vec<()>, _> = data.iter()
+                let tmp: Result<Vec<()>, _> = data
+                    .iter()
                     .map(|&(ref label, ref ty)| write!(f, "{}: {},", label, ty))
                     .collect();
                 tmp?;
                 write!(f, "}}")
-            },
+            }
             List(box ref ty) => write!(f, "List[{}]", ty),
         }
     }
@@ -60,17 +64,21 @@ impl Type {
                     if element_ty.is_none() {
                         element_ty = Some(expr_ty);
                     } else if element_ty.as_ref() != Some(&expr_ty) {
-                        return Err(format!("nyan not match type: {:?} and {:?}", element_ty.unwrap(), expr_ty))
+                        return Err(format!(
+                            "nyan not match type: {:?} and {:?}",
+                            element_ty.unwrap(),
+                            expr_ty
+                        ));
                     }
                 }
                 Ok(Type::List(box element_ty.unwrap()))
-            },
+            }
             Expr::Var(ref name) => context.lookup(name),
             Expr::Lambda(ref name, box ref ty, box ref e) => {
                 let new_context = context.add(name, &ty);
                 let ret_ty = try!(Type::from_expr(e, &new_context));
                 Ok(Type::Function(box ty.clone(), box ret_ty))
-            },
+            }
             Expr::Apply(box ref e1, box ref e2) => {
                 let param = try!(Type::from_expr(e2, context));
                 let f_ty = try!(Type::from_expr(e1, context));
@@ -83,11 +91,11 @@ impl Type {
                 } else {
                     Err(format!("can not apply to non functional type: {:?}", f_ty))
                 }
-            },
+            }
             Expr::Let(ref name, box ref init, box ref body) => {
                 let new_context = context.add(name, &try!(Type::from_expr(init, context)));
                 Type::from_expr(body, &new_context)
-            },
+            }
             Expr::LetRec(ref name, box ref ty, box ref init, box ref body) => {
                 let new_context = context.add(name, &ty);
                 if Type::from_expr(init, &new_context) == Ok(ty.clone()) {
@@ -95,14 +103,14 @@ impl Type {
                 } else {
                     Err(format!("type error: not match {:?}", ty))
                 }
-            },
+            }
             Expr::Sequence(box ref e1, box ref e2) => {
                 if try!(Type::from_expr(e1, context)) == Type::Unit {
                     Type::from_expr(e2, context)
                 } else {
                     Err(format!("{:?} is not unit type", e1))
                 }
-            },
+            }
             Expr::If(box ref cond, box ref tr, box ref fl) => {
                 let cond_ty = try!(Type::from_expr(cond, context));
                 if cond_ty == Type::Bool {
@@ -116,28 +124,29 @@ impl Type {
                 } else {
                     Err(format!("if condition must be bool"))
                 }
-            },
+            }
             Expr::Equal(box ref e1, box ref e2) | Expr::NotEqual(box ref e1, box ref e2) => {
                 let e1_ty = try!(Type::from_expr(e1, context));
                 let e2_ty = try!(Type::from_expr(e2, context));
                 match (e1_ty, e2_ty) {
-                    (Type::Int, Type::Int) | (Type::Char, Type::Char) | (Type::Bool, Type::Bool)
-                        => Ok(Type::Bool),
-                    (l, r) => Err(format!("can not compare {:?} and {:?}", l, r))
+                    (Type::Int, Type::Int)
+                    | (Type::Char, Type::Char)
+                    | (Type::Bool, Type::Bool) => Ok(Type::Bool),
+                    (l, r) => Err(format!("can not compare {:?} and {:?}", l, r)),
                 }
-            },
-            Expr::LessThan(box ref e1, box ref e2) |
-            Expr::GreaterThan(box ref e1, box ref e2) => {
+            }
+            Expr::LessThan(box ref e1, box ref e2) | Expr::GreaterThan(box ref e1, box ref e2) => {
                 let e1_ty = try!(Type::from_expr(e1, context));
                 let e2_ty = try!(Type::from_expr(e2, context));
                 match (e1_ty, e2_ty) {
-                    (Type::Int, Type::Int) | (Type::Char, Type::Char)
-                        => Ok(Type::Bool),
-                    (l, r) => Err(format!("can not compare {:?} and {:?}", l, r))
+                    (Type::Int, Type::Int) | (Type::Char, Type::Char) => Ok(Type::Bool),
+                    (l, r) => Err(format!("can not compare {:?} and {:?}", l, r)),
                 }
-            },
-            Expr::Add(box ref e1, box ref e2) | Expr::Sub(box ref e1, box ref e2) |
-            Expr::Mult(box ref e1, box ref e2) | Expr::Div(box ref e1, box ref e2) => {
+            }
+            Expr::Add(box ref e1, box ref e2)
+            | Expr::Sub(box ref e1, box ref e2)
+            | Expr::Mult(box ref e1, box ref e2)
+            | Expr::Div(box ref e1, box ref e2) => {
                 let e1_ty = try!(Type::from_expr(e1, context));
                 let e2_ty = try!(Type::from_expr(e2, context));
                 if let (Type::Int, Type::Int) = (e1_ty, e2_ty) {
@@ -147,14 +156,17 @@ impl Type {
                 }
             }
             Expr::Record(ref v) => {
-                let branches: Vec<_> = v.iter().map(|&(ref label, ref expr)| {
-                    match Type::from_expr(expr.as_ref(), context) {
-                        Ok(ty) => (label.clone(), box ty),
-                        Err(msg) => panic!("{:?}", msg)
-                    }
-                }).collect();
+                let branches: Vec<_> = v
+                    .iter()
+                    .map(
+                        |&(ref label, ref expr)| match Type::from_expr(expr.as_ref(), context) {
+                            Ok(ty) => (label.clone(), box ty),
+                            Err(msg) => panic!("{:?}", msg),
+                        },
+                    )
+                    .collect();
                 Ok(Type::Record(branches))
-            },
+            }
             Expr::Variant(ref tag, box ref e, box ref ty) => {
                 if let Type::Variant(v) = ty.clone() {
                     let found = v.iter().find(|e| e.0 == tag.clone());
@@ -164,7 +176,10 @@ impl Type {
                         if &e_ty == branch_ty.as_ref() {
                             Ok(ty.clone())
                         } else {
-                            Err(format!("not much variant type: tag {} is related to {:?}, not {:?}", branch.0, e_ty, branch.1))
+                            Err(format!(
+                                "not much variant type: tag {} is related to {:?}, not {:?}",
+                                branch.0, e_ty, branch.1
+                            ))
                         }
                     } else {
                         Err(format!("not found such tag {} in variant {:?}", tag, ty))
@@ -172,7 +187,7 @@ impl Type {
                 } else {
                     Err(format!("variant type specifier must be variant type"))
                 }
-            },
+            }
             Expr::Dot(box ref e, ref label) => {
                 if let Type::Record(branches) = try!(Type::from_expr(e, context)) {
                     let branch = branches.iter().find(|e| e.0 == label.clone());
@@ -184,34 +199,34 @@ impl Type {
                 } else {
                     Err(format!("can not apply dot operator for non record"))
                 }
-            },
+            }
             Expr::Match(box ref e, ref branches) => Type::match_typecheck(e, branches, context),
             Expr::Println(box ref e) => {
                 try!(Type::from_expr(e, context));
                 Ok(Type::Unit)
-            },
+            }
         }
     }
 
     fn match_typecheck(
         e: &Expr,
         branches: &Vec<(String, String, Box<Expr>)>,
-        context: &Context<Type>) -> Result<Type, String>
-    {
+        context: &Context<Type>,
+    ) -> Result<Type, String> {
         let e_ty = try!(Type::from_expr(e, context));
         let mut ret_ty = None;
         if let Type::Variant(v) = e_ty {
             for (idx, (label, box ty)) in v.into_iter().enumerate() {
                 let ref branch = branches[idx];
                 if label != branch.0 {
-                    return Err(format!("not match label: {} and {}", label, branch.0))
+                    return Err(format!("not match label: {} and {}", label, branch.0));
                 }
                 let new_context = context.add(&branch.1, &ty);
                 let ty = try!(Type::from_expr(&branch.2, &new_context));
                 if ret_ty == None {
                     ret_ty = Some(ty);
                 } else if ret_ty != Some(ty) {
-                    return Err(format!("can not much all match return types"))
+                    return Err(format!("can not much all match return types"));
                 }
             }
             if let Some(ty) = ret_ty {
@@ -227,11 +242,10 @@ impl Type {
     pub fn subst(&mut self, alias: &HashMap<String, Type>) {
         let name = match *self {
             Type::Variable(ref name) => name.clone(),
-            _ => return
+            _ => return,
         };
         if let Some(ty) = alias.get(&name) {
             *self = ty.clone();
         }
     }
 }
-

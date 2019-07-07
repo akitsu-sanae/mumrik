@@ -7,5 +7,3 @@ pub struct Program {
     pub expr: Expr,
     pub typ_aliases: HashMap<String, Type>,
 }
-
-

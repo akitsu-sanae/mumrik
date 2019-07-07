@@ -7,9 +7,7 @@ pub struct Context<T: Clone + Debug> {
 
 impl<T: Clone + Debug> Context<T> {
     pub fn new() -> Self {
-        Context {
-            binding: vec![]
-        }
+        Context { binding: vec![] }
     }
 
     pub fn add(&self, name: &String, v: &T) -> Self {
@@ -19,13 +17,10 @@ impl<T: Clone + Debug> Context<T> {
     }
 
     pub fn lookup(&self, name: &String) -> Result<T, String> {
-        let res = self.binding.iter().find(|ref e| {
-            e.0 == name.clone()
-        });
+        let res = self.binding.iter().find(|ref e| e.0 == name.clone());
         match res {
             Some(res) => Ok(res.clone().1),
             None => Err(format!("unbound: {} in {:?}", name, self.binding)),
         }
     }
 }
-
