@@ -1,17 +1,16 @@
 # Mumrik Programming Language
 
-Mumrikは秋津早苗が趣味で作っているプログラミング言語です。
+Mumrik is a toy language.
 
-# 特徴
-Mumrikは以下の特徴を持つ言語を目指しています。
+# Feature
 
-* C++の型操作
-* 簡潔なコンパイル時処理のサポート
-* 関数型プログラミング
-* オブジェクト指向プログラミング
-* 強い静的型付け
+Mumrik will have the following features (not implemented yet, WIP)
+* simple compile time processing
+* functional programming
+* OOP
+* strong static typing
 
-# 例
+# Example
 
 8th Fibonacci number
 ```
@@ -24,7 +23,7 @@ println fib 8
 ```
 
 # Copyright
-Copyright (C) 2016 akitsu sanae.  
+Copyright (C) 2016-2019 akitsu sanae.  
 Distributed under the Boost Software License, Version 1.0. 
 (See accompanying file LICENSE or copy at http://www.boost/org/LICENSE_1_0.txt)  
 
