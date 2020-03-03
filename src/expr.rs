@@ -108,11 +108,11 @@ impl Expr {
                     body.eval(&new_context)
                 }
                 &Expr::Lambda(_, _, _) => {
-                    let arg = try!(arg.eval(context));
+                    let arg = arg.eval(context)?;
                     Expr::Apply(box f.clone(), box arg).eval(context)
                 }
                 _ => {
-                    let f = try!(f.eval(context));
+                    let f = f.eval(context)?;
                     Expr::Apply(box f, box arg.clone()).eval(context)
                 }
             },
@@ -129,7 +129,7 @@ impl Expr {
                 box e1.clone(),
             )
             .eval(context),
-            &Expr::If(box ref cond, box ref tr, box ref fl) => match try!(cond.eval(context)) {
+            &Expr::If(box ref cond, box ref tr, box ref fl) => match cond.eval(context)? {
                 Expr::Bool(c) => {
                     if c {
                         tr.eval(context)
@@ -139,57 +139,47 @@ impl Expr {
                 }
                 _ => Err(format!("if condition must be bool: {:?}", cond)),
             },
-            &Expr::Equal(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l == r)),
-                    (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l == r)),
-                    _ => Err(format!("can not {:?} = {:?}", e1, e2)),
-                }
-            }
+            &Expr::Equal(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
+                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l == r)),
+                (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l == r)),
+                _ => Err(format!("can not {:?} = {:?}", e1, e2)),
+            },
             &Expr::NotEqual(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
+                match (e1.eval(context)?, e2.eval(context)?) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l != r)),
                     (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l != r)),
                     _ => Err(format!("can not {:?} = {:?}", e1, e2)),
                 }
             }
             &Expr::LessThan(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
+                match (e1.eval(context)?, e2.eval(context)?) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l < r)),
                     _ => Err(format!("can not compare unnumeric values")),
                 }
             }
             &Expr::GreaterThan(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
+                match (e1.eval(context)?, e2.eval(context)?) {
                     (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l > r)),
                     _ => Err(format!("can not compare unnumeric values")),
                 }
             }
-            &Expr::Add(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l + r)),
-                    _ => Err(format!("can not unnumeric values")),
-                }
-            }
-            &Expr::Sub(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l - r)),
-                    _ => Err(format!("can not unnumeric values")),
-                }
-            }
-            &Expr::Mult(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l * r)),
-                    _ => Err(format!("can not unnumeric values")),
-                }
-            }
-            &Expr::Div(box ref e1, box ref e2) => {
-                match (try!(e1.eval(context)), try!(e2.eval(context))) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l / r)),
-                    _ => Err(format!("can not unnumeric values")),
-                }
-            }
-            &Expr::Dot(box ref e, ref label) => match try!(e.eval(context)) {
+            &Expr::Add(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
+                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l + r)),
+                _ => Err(format!("can not unnumeric values")),
+            },
+            &Expr::Sub(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
+                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l - r)),
+                _ => Err(format!("can not unnumeric values")),
+            },
+            &Expr::Mult(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
+                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l * r)),
+                _ => Err(format!("can not unnumeric values")),
+            },
+            &Expr::Div(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
+                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l / r)),
+                _ => Err(format!("can not unnumeric values")),
+            },
+            &Expr::Dot(box ref e, ref label) => match e.eval(context)? {
                 Expr::Record(v) => {
                     let found = v.iter().find(|e| e.0 == label.clone());
                     if let Some(branch) = found {
@@ -214,7 +204,7 @@ impl Expr {
             },
             &Expr::Println(box ref e) => match e.eval(context) {
                 Ok(e) => {
-                    match try!(e.eval(context)) {
+                    match e.eval(context)? {
                         Expr::Number(n) => println!("{}", n),
                         Expr::Bool(b) => println!("{}", b),
                         Expr::Unit => println!("unit"),

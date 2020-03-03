@@ -60,7 +60,7 @@ impl Type {
             Expr::List(ref exprs) => {
                 let mut element_ty = None;
                 for expr in exprs {
-                    let expr_ty = try!(Type::from_expr(expr, context));
+                    let expr_ty = Type::from_expr(expr, context)?;
                     if element_ty.is_none() {
                         element_ty = Some(expr_ty);
                     } else if element_ty.as_ref() != Some(&expr_ty) {
@@ -76,12 +76,12 @@ impl Type {
             Expr::Var(ref name) => context.lookup(name),
             Expr::Lambda(ref name, box ref ty, box ref e) => {
                 let new_context = context.add(name, &ty);
-                let ret_ty = try!(Type::from_expr(e, &new_context));
+                let ret_ty = Type::from_expr(e, &new_context)?;
                 Ok(Type::Function(box ty.clone(), box ret_ty))
             }
             Expr::Apply(box ref e1, box ref e2) => {
-                let param = try!(Type::from_expr(e2, context));
-                let f_ty = try!(Type::from_expr(e1, context));
+                let param = Type::from_expr(e2, context)?;
+                let f_ty = Type::from_expr(e1, context)?;
                 if let Type::Function(box arg, box ret) = f_ty {
                     if arg == param {
                         Ok(ret)
@@ -93,7 +93,7 @@ impl Type {
                 }
             }
             Expr::Let(ref name, box ref init, box ref body) => {
-                let new_context = context.add(name, &try!(Type::from_expr(init, context)));
+                let new_context = context.add(name, &Type::from_expr(init, context)?);
                 Type::from_expr(body, &new_context)
             }
             Expr::LetRec(ref name, box ref ty, box ref init, box ref body) => {
@@ -105,17 +105,17 @@ impl Type {
                 }
             }
             Expr::Sequence(box ref e1, box ref e2) => {
-                if try!(Type::from_expr(e1, context)) == Type::Unit {
+                if Type::from_expr(e1, context)? == Type::Unit {
                     Type::from_expr(e2, context)
                 } else {
                     Err(format!("{:?} is not unit type", e1))
                 }
             }
             Expr::If(box ref cond, box ref tr, box ref fl) => {
-                let cond_ty = try!(Type::from_expr(cond, context));
+                let cond_ty = Type::from_expr(cond, context)?;
                 if cond_ty == Type::Bool {
-                    let tr_ty = try!(Type::from_expr(tr, context));
-                    let fl_ty = try!(Type::from_expr(fl, context));
+                    let tr_ty = Type::from_expr(tr, context)?;
+                    let fl_ty = Type::from_expr(fl, context)?;
                     if tr_ty == fl_ty {
                         Ok(tr_ty)
                     } else {
@@ -126,8 +126,8 @@ impl Type {
                 }
             }
             Expr::Equal(box ref e1, box ref e2) | Expr::NotEqual(box ref e1, box ref e2) => {
-                let e1_ty = try!(Type::from_expr(e1, context));
-                let e2_ty = try!(Type::from_expr(e2, context));
+                let e1_ty = Type::from_expr(e1, context)?;
+                let e2_ty = Type::from_expr(e2, context)?;
                 match (e1_ty, e2_ty) {
                     (Type::Int, Type::Int)
                     | (Type::Char, Type::Char)
@@ -136,8 +136,8 @@ impl Type {
                 }
             }
             Expr::LessThan(box ref e1, box ref e2) | Expr::GreaterThan(box ref e1, box ref e2) => {
-                let e1_ty = try!(Type::from_expr(e1, context));
-                let e2_ty = try!(Type::from_expr(e2, context));
+                let e1_ty = Type::from_expr(e1, context)?;
+                let e2_ty = Type::from_expr(e2, context)?;
                 match (e1_ty, e2_ty) {
                     (Type::Int, Type::Int) | (Type::Char, Type::Char) => Ok(Type::Bool),
                     (l, r) => Err(format!("can not compare {:?} and {:?}", l, r)),
@@ -147,8 +147,8 @@ impl Type {
             | Expr::Sub(box ref e1, box ref e2)
             | Expr::Mult(box ref e1, box ref e2)
             | Expr::Div(box ref e1, box ref e2) => {
-                let e1_ty = try!(Type::from_expr(e1, context));
-                let e2_ty = try!(Type::from_expr(e2, context));
+                let e1_ty = Type::from_expr(e1, context)?;
+                let e2_ty = Type::from_expr(e2, context)?;
                 if let (Type::Int, Type::Int) = (e1_ty, e2_ty) {
                     Ok(Type::Int)
                 } else {
@@ -171,7 +171,7 @@ impl Type {
                 if let Type::Variant(v) = ty.clone() {
                     let found = v.iter().find(|e| e.0 == tag.clone());
                     if let Some(branch) = found {
-                        let e_ty = try!(Type::from_expr(e, context));
+                        let e_ty = Type::from_expr(e, context)?;
                         let ref branch_ty = branch.1;
                         if &e_ty == branch_ty.as_ref() {
                             Ok(ty.clone())
@@ -189,7 +189,7 @@ impl Type {
                 }
             }
             Expr::Dot(box ref e, ref label) => {
-                if let Type::Record(branches) = try!(Type::from_expr(e, context)) {
+                if let Type::Record(branches) = Type::from_expr(e, context)? {
                     let branch = branches.iter().find(|e| e.0 == label.clone());
                     if let Some(branch) = branch {
                         Ok(*branch.1.clone())
@@ -202,7 +202,7 @@ impl Type {
             }
             Expr::Match(box ref e, ref branches) => Type::match_typecheck(e, branches, context),
             Expr::Println(box ref e) => {
-                try!(Type::from_expr(e, context));
+                Type::from_expr(e, context)?;
                 Ok(Type::Unit)
             }
         }
@@ -213,7 +213,7 @@ impl Type {
         branches: &Vec<(String, String, Box<Expr>)>,
         context: &Context<Type>,
     ) -> Result<Type, String> {
-        let e_ty = try!(Type::from_expr(e, context));
+        let e_ty = Type::from_expr(e, context)?;
         let mut ret_ty = None;
         if let Type::Variant(v) = e_ty {
             for (idx, (label, box ty)) in v.into_iter().enumerate() {
@@ -222,7 +222,7 @@ impl Type {
                     return Err(format!("not match label: {} and {}", label, branch.0));
                 }
                 let new_context = context.add(&branch.1, &ty);
-                let ty = try!(Type::from_expr(&branch.2, &new_context));
+                let ty = Type::from_expr(&branch.2, &new_context)?;
                 if ret_ty == None {
                     ret_ty = Some(ty);
                 } else if ret_ty != Some(ty) {
