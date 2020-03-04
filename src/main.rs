@@ -1,6 +1,8 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
+extern crate peg;
+
 mod context;
 mod expr;
 mod parser;
@@ -31,21 +33,21 @@ fn main() {
 
 fn exec(src: &str) {
     use program::Program;
-    match parser::parse(src) {
-        Ok(Program { expr, typ_aliases }) => {
+    match parser::program(src) {
+        Ok(Program { expr, type_aliases }) => {
             let mut expr = expr;
-            expr.subst_typealias(&typ_aliases);
+            expr.subst_typealias(&type_aliases);
             let ty = Type::from_expr(&expr, &Context::new()).expect("type error");
             let value = expr.eval(&Context::new()).expect("invalid operation");
             println!("{}: {}", value, ty);
         }
         Err(err) => {
             let lines: Vec<_> = src.split('\n').collect();
-            println!("{}", lines[err.line - 1]);
-            println!("\u{001B}[31m{}^", " ".repeat(err.column - 1));
+            println!("{}", lines[err.location.line - 1]);
+            println!("\u{001B}[31m{}^", " ".repeat(err.location.column - 1));
             println!(
                 "syntax error at line:{} column: {}\nexpected: {:?}\u{001B}[39m",
-                err.line, err.column, err.expected
+                err.location.line, err.location.column, err.expected
             )
         }
     };

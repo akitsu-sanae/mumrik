@@ -4,7 +4,7 @@ use type_::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
-    Number(i64),
+    Number(i32),
     Bool(bool),
     Char(char),
     Unit,
