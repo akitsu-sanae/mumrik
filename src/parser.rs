@@ -19,11 +19,18 @@ rule type_aliases() -> HashMap<String, Type>
     }
 
 pub rule type_() -> Type
-    = __ ty:primitive_type() { ty }
+    = __ ty:variant_type() { ty }
+    / __ ty:primitive_type() { ty }
 
+rule variant_type() -> Type
+    = ENUM() LEFT_BRACE() branches:(tag:ident() COLON() ty:type_() COMMA()? { (tag, box ty) })+ RIGHT_BRACE() {
+        Type::Variant(branches)
+    }
 
 rule primitive_type() -> Type
     = INT() { Type::Int }
+    / BOOL() { Type::Bool }
+    / name:ident() { Type::Variable(name) }
 
 pub rule expr() -> Expr
     = __ e:func_expr() { e }
@@ -51,6 +58,12 @@ rule inner_expr() -> Expr
 rule if_expr() -> Expr
     = IF() cond:expr() LEFT_BRACE() tr:expr() RIGHT_BRACE() ELSE() LEFT_BRACE() fl:expr() RIGHT_BRACE() {
         Expr::If(box cond, box tr, box fl)
+    }
+    / match_expr()
+
+rule match_expr() -> Expr
+    = MATCH() e:expr() LEFT_BRACE() branches:(label:ident() name:ident() FAT_ARROW() e:expr() COMMA()? { (label, name, box e) })* RIGHT_BRACE() {
+        Expr::Match(box e, branches)
     }
     / binop_expr()
 
@@ -89,6 +102,7 @@ rule factor_expr() -> Expr
     / string_expr()
     / record_expr()
     / tuple_expr()
+    / variant_expr()
     / list_expr()
     / println_expr()
     / name:ident() { Expr::Var(name) }
@@ -112,6 +126,11 @@ rule tuple_expr() -> Expr
             (i.to_string(), box e)
         }).collect();
         Expr::Record(branches)
+    }
+
+rule variant_expr() -> Expr
+    = ty:type_() DOUBLE_COLON() label:ident() LEFT_PAREN() e:expr() RIGHT_PAREN() {
+        Expr::Variant(label, box e, box ty)
     }
 
 rule list_expr() -> Expr
@@ -145,9 +164,11 @@ rule ident() -> String
     / expected!("<identifier>")
 
 rule IS_KEYWORD()
-    = TYPE() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN()
+    = TYPE() / ENUM() / MATCH() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN()
 
 rule TYPE() = "type" !ident() __
+rule ENUM() = "enum" !ident() __
+rule MATCH() = "match" !ident() __
 rule REC() = "rec" !ident() __
 rule FUNC() = "func" !ident() __
 rule IF() = "if" !ident() __
@@ -163,6 +184,7 @@ rule EQUAL() = "=" __
 rule COMMA() = "," __
 rule DOT() = "." __
 rule COLON() = ":" __
+rule DOUBLE_COLON() = "::" __
 rule SEMICOLON() = ";" __
 rule DOUBLE_EQUAL() = "==" __
 rule NOT_EQUAL() = "/=" __

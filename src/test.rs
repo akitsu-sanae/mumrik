@@ -147,7 +147,7 @@ fn dot() {
 
 #[test]
 fn variant() {
-    let mut program = program("type Nyan = enum { Hoge : Int Fuga: Bool} Nyan::Hoge(42)").unwrap();
+    let mut program = program("type Nyan = enum { Hoge: Int, Fuga: Bool} Nyan::Hoge(42)").unwrap();
     program.expr.subst_typealias(&program.type_aliases);
     let nyan_ty = Type::Variant(vec![
         ("Hoge".to_string(), box Type::Int),
