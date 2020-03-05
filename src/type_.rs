@@ -1,5 +1,5 @@
 use context::Context;
-use expr::Expr;
+use expr::{BinOp, Expr};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,7 +125,8 @@ impl Type {
                     Err(format!("if condition must be bool"))
                 }
             }
-            Expr::Equal(box ref e1, box ref e2) | Expr::NotEqual(box ref e1, box ref e2) => {
+            Expr::BinOp(BinOp::Equal, box ref e1, box ref e2)
+            | Expr::BinOp(BinOp::NotEqual, box ref e1, box ref e2) => {
                 let e1_ty = Type::from_expr(e1, context)?;
                 let e2_ty = Type::from_expr(e2, context)?;
                 match (e1_ty, e2_ty) {
@@ -135,7 +136,8 @@ impl Type {
                     (l, r) => Err(format!("can not compare {:?} and {:?}", l, r)),
                 }
             }
-            Expr::LessThan(box ref e1, box ref e2) | Expr::GreaterThan(box ref e1, box ref e2) => {
+            Expr::BinOp(BinOp::LessThan, box ref e1, box ref e2)
+            | Expr::BinOp(BinOp::GreaterThan, box ref e1, box ref e2) => {
                 let e1_ty = Type::from_expr(e1, context)?;
                 let e2_ty = Type::from_expr(e2, context)?;
                 match (e1_ty, e2_ty) {
@@ -143,10 +145,10 @@ impl Type {
                     (l, r) => Err(format!("can not compare {:?} and {:?}", l, r)),
                 }
             }
-            Expr::Add(box ref e1, box ref e2)
-            | Expr::Sub(box ref e1, box ref e2)
-            | Expr::Mult(box ref e1, box ref e2)
-            | Expr::Div(box ref e1, box ref e2) => {
+            Expr::BinOp(BinOp::Add, box ref e1, box ref e2)
+            | Expr::BinOp(BinOp::Sub, box ref e1, box ref e2)
+            | Expr::BinOp(BinOp::Mult, box ref e1, box ref e2)
+            | Expr::BinOp(BinOp::Div, box ref e1, box ref e2) => {
                 let e1_ty = Type::from_expr(e1, context)?;
                 let e2_ty = Type::from_expr(e2, context)?;
                 if let (Type::Int, Type::Int) = (e1_ty, e2_ty) {

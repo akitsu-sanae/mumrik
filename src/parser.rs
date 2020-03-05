@@ -1,4 +1,8 @@
-use crate::{expr::Expr, program::Program, type_::Type};
+use crate::{
+    expr::{BinOp, Expr},
+    program::Program,
+    type_::Type,
+};
 use peg;
 use std::collections::HashMap;
 use std::iter::FromIterator;
@@ -68,16 +72,16 @@ rule match_expr() -> Expr
     / binop_expr()
 
 rule binop_expr() -> Expr = precedence! {
-    x:(@) DOUBLE_EQUAL() y:@ { Expr::Equal(box x, box y) }
-    x:(@) NOT_EQUAL() y:@ { Expr::NotEqual(box x, box y) }
-    x:(@) LEFT_ANGLE_BRACKET() y:@ { Expr::LessThan(box x, box y) }
-    x:(@) RIGHT_ANGLE_BRACKET() y:@ { Expr::GreaterThan(box x, box y) }
+    x:(@) DOUBLE_EQUAL() y:@ { Expr::BinOp(BinOp::Equal, box x, box y) }
+    x:(@) NOT_EQUAL() y:@ { Expr::BinOp(BinOp::NotEqual, box x, box y) }
+    x:(@) LEFT_ANGLE_BRACKET() y:@ { Expr::BinOp(BinOp::LessThan, box x, box y) }
+    x:(@) RIGHT_ANGLE_BRACKET() y:@ { Expr::BinOp(BinOp::GreaterThan, box x, box y) }
     --
-    x:(@) PLUS() y:@ { Expr::Add(box x, box y) }
-    x:(@) MINUS() y:@ { Expr::Sub(box x, box y) }
+    x:(@) PLUS() y:@ { Expr::BinOp(BinOp::Add, box x, box y) }
+    x:(@) MINUS() y:@ { Expr::BinOp(BinOp::Sub, box x, box y) }
     --
-    x:(@) STAR() y:@ { Expr::Mult(box x, box y) }
-    x:(@) SLASH() y:@ { Expr::Div(box x, box y) }
+    x:(@) STAR() y:@ { Expr::BinOp(BinOp::Mult, box x, box y) }
+    x:(@) SLASH() y:@ { Expr::BinOp(BinOp::Div, box x, box y) }
     --
     e:apply_expr() { e }
 }

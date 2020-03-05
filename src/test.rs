@@ -1,5 +1,5 @@
 use context::Context;
-use expr::Expr;
+use expr::{BinOp, Expr};
 use parser::*;
 use type_::Type;
 
@@ -61,10 +61,12 @@ fn arithmetic() {
     let e = expr("1+2*5+6");
     assert_eq!(
         e,
-        Ok(Expr::Add(
-            box Expr::Add(
+        Ok(Expr::BinOp(
+            BinOp::Add,
+            box Expr::BinOp(
+                BinOp::Add,
                 box Expr::Number(1),
-                box Expr::Mult(box Expr::Number(2), box Expr::Number(5))
+                box Expr::BinOp(BinOp::Mult, box Expr::Number(2), box Expr::Number(5))
             ),
             box Expr::Number(6)
         ))
@@ -77,14 +79,22 @@ fn compare() {
     let e = expr("1 < 2");
     assert_eq!(
         e,
-        Ok(Expr::LessThan(box Expr::Number(1), box Expr::Number(2)))
+        Ok(Expr::BinOp(
+            BinOp::LessThan,
+            box Expr::Number(1),
+            box Expr::Number(2)
+        ))
     );
     assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Bool(true)));
 
     let e = expr("1 > 2");
     assert_eq!(
         e,
-        Ok(Expr::GreaterThan(box Expr::Number(1), box Expr::Number(2)))
+        Ok(Expr::BinOp(
+            BinOp::GreaterThan,
+            box Expr::Number(1),
+            box Expr::Number(2)
+        ))
     );
     assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Bool(false)));
 }
@@ -235,7 +245,11 @@ fn match_() {
                 (
                     "Hoge".to_string(),
                     "x".to_string(),
-                    box Expr::Add(box Expr::Var("x".to_string()), box Expr::Number(1))
+                    box Expr::BinOp(
+                        BinOp::Add,
+                        box Expr::Var("x".to_string()),
+                        box Expr::Number(1)
+                    )
                 ),
                 (
                     "Fuga".to_string(),
@@ -278,7 +292,11 @@ fn func() {
             box Expr::Lambda(
                 "a".to_string(),
                 box Type::Int,
-                box Expr::Add(box Expr::Var("a".to_string()), box Expr::Number(12))
+                box Expr::BinOp(
+                    BinOp::Add,
+                    box Expr::Var("a".to_string()),
+                    box Expr::Number(12)
+                )
             ),
             box Expr::Apply(box Expr::Var("f".to_string()), box Expr::Number(13))
         )
@@ -301,16 +319,29 @@ fn rec_func() {
                 "x".to_string(),
                 box Type::Int,
                 box Expr::If(
-                    box Expr::LessThan(box Expr::Var("x".to_string()), box Expr::Number(2)),
+                    box Expr::BinOp(
+                        BinOp::LessThan,
+                        box Expr::Var("x".to_string()),
+                        box Expr::Number(2)
+                    ),
                     box Expr::Number(1),
-                    box Expr::Add(
+                    box Expr::BinOp(
+                        BinOp::Add,
                         box Expr::Apply(
                             box Expr::Var("fib".to_string()),
-                            box Expr::Sub(box Expr::Var("x".to_string()), box Expr::Number(1))
+                            box Expr::BinOp(
+                                BinOp::Sub,
+                                box Expr::Var("x".to_string()),
+                                box Expr::Number(1)
+                            )
                         ),
                         box Expr::Apply(
                             box Expr::Var("fib".to_string()),
-                            box Expr::Sub(box Expr::Var("x".to_string()), box Expr::Number(2))
+                            box Expr::BinOp(
+                                BinOp::Sub,
+                                box Expr::Var("x".to_string()),
+                                box Expr::Number(2)
+                            )
                         )
                     )
                 )

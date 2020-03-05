@@ -1,6 +1,77 @@
 use context::Context;
 use std::collections::HashMap;
+use std::fmt;
 use type_::Type;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinOp {
+    Add,
+    Sub,
+    Mult,
+    Div,
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+}
+
+impl fmt::Display for BinOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BinOp::Add => "+",
+                BinOp::Sub => "-",
+                BinOp::Mult => "*",
+                BinOp::Div => "/",
+                BinOp::Equal => "==",
+                BinOp::NotEqual => "/=",
+                BinOp::LessThan => "<",
+                BinOp::GreaterThan => ">",
+            }
+        )
+    }
+}
+
+impl BinOp {
+    fn eval(&self, e1: &Expr, e2: &Expr) -> Result<Expr, String> {
+        match (self, e1, e2) {
+            (&BinOp::Equal, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Bool(n1 == n2))
+            }
+            (&BinOp::Equal, &Expr::Bool(ref b1), &Expr::Bool(ref b2)) => Ok(Expr::Bool(b1 == b2)),
+
+            (&BinOp::NotEqual, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Bool(n1 != n2))
+            }
+            (&BinOp::NotEqual, &Expr::Bool(ref b1), &Expr::Bool(ref b2)) => {
+                Ok(Expr::Bool(b1 != b2))
+            }
+
+            (&BinOp::LessThan, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Bool(n1 < n2))
+            }
+            (&BinOp::GreaterThan, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Bool(n1 > n2))
+            }
+
+            (&BinOp::Add, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Number(n1 + n2))
+            }
+            (&BinOp::Sub, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Number(n1 - n2))
+            }
+            (&BinOp::Mult, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Number(n1 * n2))
+            }
+            (&BinOp::Div, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
+                Ok(Expr::Number(n1 / n2))
+            }
+            (op, e1, e2) => Err(format!("cannot {} for {} and {}", op, e1, e2)),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
@@ -16,14 +87,7 @@ pub enum Expr {
     Let(String, Box<Expr>, Box<Expr>),
     LetRec(String, Box<Type>, Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
-    Equal(Box<Expr>, Box<Expr>),
-    NotEqual(Box<Expr>, Box<Expr>),
-    LessThan(Box<Expr>, Box<Expr>),
-    GreaterThan(Box<Expr>, Box<Expr>),
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Mult(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
+    BinOp(BinOp, Box<Expr>, Box<Expr>),
     Record(Vec<(String, Box<Expr>)>),
     Dot(Box<Expr>, String),
     Variant(String, Box<Expr>, Box<Type>),
@@ -34,8 +98,6 @@ pub enum Expr {
     Match(Box<Expr>, Vec<(String, String, Box<Expr>)>),
     Println(Box<Expr>),
 }
-
-use std::fmt;
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -64,14 +126,7 @@ impl fmt::Display for Expr {
             If(box ref cond, box ref then, box ref else_) => {
                 write!(f, "if {} {{ {} }} else {{ {} }}", cond, then, else_)
             }
-            Equal(box ref lhs, box ref rhs) => write!(f, "{} == {}", lhs, rhs),
-            NotEqual(box ref lhs, box ref rhs) => write!(f, "{} != {}", lhs, rhs),
-            LessThan(box ref lhs, box ref rhs) => write!(f, "{} < {}", lhs, rhs),
-            GreaterThan(box ref lhs, box ref rhs) => write!(f, "{} > {}", lhs, rhs),
-            Add(box ref lhs, box ref rhs) => write!(f, "{} + {}", lhs, rhs),
-            Sub(box ref lhs, box ref rhs) => write!(f, "{} - {}", lhs, rhs),
-            Mult(box ref lhs, box ref rhs) => write!(f, "{} * {}", lhs, rhs),
-            Div(box ref lhs, box ref rhs) => write!(f, "{} / {}", lhs, rhs),
+            BinOp(op, box ref lhs, box ref rhs) => write!(f, "{} {} {}", lhs, op, rhs),
             Record(ref data) => {
                 write!(f, "{{ ")?;
                 let tmp: Result<Vec<()>, _> = data
@@ -139,46 +194,9 @@ impl Expr {
                 }
                 _ => Err(format!("if condition must be bool: {:?}", cond)),
             },
-            &Expr::Equal(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
-                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l == r)),
-                (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l == r)),
-                _ => Err(format!("can not {:?} = {:?}", e1, e2)),
-            },
-            &Expr::NotEqual(box ref e1, box ref e2) => {
-                match (e1.eval(context)?, e2.eval(context)?) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l != r)),
-                    (Expr::Bool(l), Expr::Bool(r)) => Ok(Expr::Bool(l != r)),
-                    _ => Err(format!("can not {:?} = {:?}", e1, e2)),
-                }
+            &Expr::BinOp(op, box ref e1, box ref e2) => {
+                op.eval(&e1.eval(context)?, &e2.eval(context)?)
             }
-            &Expr::LessThan(box ref e1, box ref e2) => {
-                match (e1.eval(context)?, e2.eval(context)?) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l < r)),
-                    _ => Err(format!("can not compare unnumeric values")),
-                }
-            }
-            &Expr::GreaterThan(box ref e1, box ref e2) => {
-                match (e1.eval(context)?, e2.eval(context)?) {
-                    (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Bool(l > r)),
-                    _ => Err(format!("can not compare unnumeric values")),
-                }
-            }
-            &Expr::Add(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
-                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l + r)),
-                _ => Err(format!("can not unnumeric values")),
-            },
-            &Expr::Sub(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
-                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l - r)),
-                _ => Err(format!("can not unnumeric values")),
-            },
-            &Expr::Mult(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
-                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l * r)),
-                _ => Err(format!("can not unnumeric values")),
-            },
-            &Expr::Div(box ref e1, box ref e2) => match (e1.eval(context)?, e2.eval(context)?) {
-                (Expr::Number(l), Expr::Number(r)) => Ok(Expr::Number(l / r)),
-                _ => Err(format!("can not unnumeric values")),
-            },
             &Expr::Dot(box ref e, ref label) => match e.eval(context)? {
                 Expr::Record(v) => {
                     let found = v.iter().find(|e| e.0 == label.clone());
@@ -258,14 +276,7 @@ impl Expr {
             Let(_, box ref mut e1, box ref mut e2)
             | Apply(box ref mut e1, box ref mut e2)
             | Sequence(box ref mut e1, box ref mut e2)
-            | Equal(box ref mut e1, box ref mut e2)
-            | NotEqual(box ref mut e1, box ref mut e2)
-            | LessThan(box ref mut e1, box ref mut e2)
-            | GreaterThan(box ref mut e1, box ref mut e2)
-            | Add(box ref mut e1, box ref mut e2)
-            | Sub(box ref mut e1, box ref mut e2)
-            | Mult(box ref mut e1, box ref mut e2)
-            | Div(box ref mut e1, box ref mut e2) => {
+            | BinOp(_, box ref mut e1, box ref mut e2) => {
                 e1.subst_typealias(alias);
                 e2.subst_typealias(alias);
             }
