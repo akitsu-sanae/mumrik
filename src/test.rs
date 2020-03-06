@@ -351,3 +351,13 @@ fn rec_func() {
     );
     assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(3)));
 }
+
+#[test]
+fn let_type_func() {
+    let e = expr("type a = Int; 42").unwrap();
+    assert_eq!(
+        e,
+        Expr::LetType("a".to_string(), box Type::Int, box Expr::Number(42))
+    );
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(42)));
+}

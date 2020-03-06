@@ -86,6 +86,7 @@ pub enum Expr {
     Sequence(Box<Expr>, Box<Expr>),
     Let(String, Box<Expr>, Box<Expr>),
     LetRec(String, Box<Type>, Box<Expr>, Box<Expr>),
+    LetType(String, Box<Type>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     BinOp(BinOp, Box<Expr>, Box<Expr>),
     Record(Vec<(String, Box<Expr>)>),
@@ -119,9 +120,14 @@ impl fmt::Display for Expr {
             }
             Apply(box ref func, box ref arg) => write!(f, "{} {}", func, arg),
             Sequence(box ref e1, box ref e2) => write!(f, "{}; {}", e1, e2),
-            Let(ref id, box ref init, box ref body) => write!(f, "let {} = {}; {}", id, init, body),
-            LetRec(ref id, box ref ty, box ref init, box ref body) => {
-                write!(f, "rec let {}: {} = {}; {}", id, ty, init, body)
+            Let(ref ident, box ref init, box ref body) => {
+                write!(f, "let {} = {}; {}", ident, init, body)
+            }
+            LetRec(ref ident, box ref ty, box ref init, box ref body) => {
+                write!(f, "rec let {}: {} = {}; {}", ident, ty, init, body)
+            }
+            LetType(ref ident, box ref ty, box ref body) => {
+                write!(f, "type {} = {}; {}", ident, ty, body)
             }
             If(box ref cond, box ref then, box ref else_) => {
                 write!(f, "if {} {{ {} }} else {{ {} }}", cond, then, else_)
@@ -179,6 +185,7 @@ impl Expr {
                 let new_context = context.add(name, init);
                 body.eval(&new_context)
             }
+            &Expr::LetType(_, _, box ref body) => body.eval(&context),
             &Expr::Sequence(box ref e1, box ref e2) => Expr::Apply(
                 box Expr::Lambda("_".to_string(), box Type::Unit, box e2.clone()),
                 box e1.clone(),
@@ -272,6 +279,11 @@ impl Expr {
                 cond.subst_typealias(alias);
                 tr.subst_typealias(alias);
                 fl.subst_typealias(alias);
+            }
+            LetType(ref name, box ref ty, box ref mut e) => {
+                let mut alias = alias.clone();
+                alias.insert(name.to_string(), ty.clone());
+                e.subst_typealias(&alias);
             }
             Let(_, box ref mut e1, box ref mut e2)
             | Apply(box ref mut e1, box ref mut e2)

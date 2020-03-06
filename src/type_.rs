@@ -104,6 +104,13 @@ impl Type {
                     Err(format!("type error: not match {:?}", ty))
                 }
             }
+            Expr::LetType(ref name, box ref ty, box ref body) => {
+                let mut body = body.clone(); // TODO
+                let mut type_alias = HashMap::new();
+                type_alias.insert(name.clone(), ty.clone());
+                body.subst_typealias(&type_alias);
+                Type::from_expr(&body, &context)
+            }
             Expr::Sequence(box ref e1, box ref e2) => {
                 if Type::from_expr(e1, context)? == Type::Unit {
                     Type::from_expr(e2, context)

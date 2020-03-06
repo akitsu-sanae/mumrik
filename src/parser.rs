@@ -57,6 +57,9 @@ rule let_expr() -> Expr
     / REC() LET() name:ident() COLON() ty:type_() EQUAL() init:inner_expr() SEMICOLON() body:expr() {
         Expr::LetRec(name, box ty, box init, box body)
     }
+    / TYPE() name:ident() EQUAL() ty:type_() SEMICOLON() body:expr() {
+        Expr::LetType(name, box ty, box body)
+    }
     / sequence_expr()
 
 rule sequence_expr() -> Expr
