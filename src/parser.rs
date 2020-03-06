@@ -40,13 +40,22 @@ pub rule expr() -> Expr
     = __ e:func_expr() { e }
 
 rule func_expr() -> Expr
-    = FUNC() name:ident() arg:ident() COLON() arg_ty:type_() LEFT_BRACE() body:sequence_expr() RIGHT_BRACE() after:expr() {
+    = FUNC() name:ident() arg:ident() COLON() arg_ty:type_() LEFT_BRACE() body:let_expr() RIGHT_BRACE() after:expr() {
       // `func f arg: T = expr`
       // is syntax sugar of `let f = func arg: T -> expr`
       Expr::Let(name, box Expr::Lambda(arg, box arg_ty, box body), box after)
     }
-    / REC() FUNC() name:ident() arg:ident() COLON() arg_ty:type_() COLON() ret_ty:type_() LEFT_BRACE() body:sequence_expr() RIGHT_BRACE() after:expr() {
+    / REC() FUNC() name:ident() arg:ident() COLON() arg_ty:type_() COLON() ret_ty:type_() LEFT_BRACE() body:let_expr() RIGHT_BRACE() after:expr() {
       Expr::LetRec(name, box Type::Function(box arg_ty.clone(), box ret_ty), box Expr::Lambda(arg, box arg_ty, box body), box after)
+    }
+    / let_expr()
+
+rule let_expr() -> Expr
+    = LET() name:ident() EQUAL() init:inner_expr() SEMICOLON() body:expr() {
+        Expr::Let(name, box init, box body)
+    }
+    / REC() LET() name:ident() COLON() ty:type_() EQUAL() init:inner_expr() SEMICOLON() body:expr() {
+        Expr::LetRec(name, box ty, box init, box body)
     }
     / sequence_expr()
 
@@ -168,11 +177,12 @@ rule ident() -> String
     / expected!("<identifier>")
 
 rule IS_KEYWORD()
-    = TYPE() / ENUM() / MATCH() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN()
+    = TYPE() / ENUM() / MATCH() / LET() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN()
 
 rule TYPE() = "type" !ident() __
 rule ENUM() = "enum" !ident() __
 rule MATCH() = "match" !ident() __
+rule LET() = "let" !ident() __
 rule REC() = "rec" !ident() __
 rule FUNC() = "func" !ident() __
 rule IF() = "if" !ident() __
