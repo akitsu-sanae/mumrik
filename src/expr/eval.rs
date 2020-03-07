@@ -1,43 +1,27 @@
-use super::{BinOp, Expr};
+use super::{BinOp, Expr, Literal};
 use context::Context;
-use type_::Type;
 
 impl BinOp {
     fn eval(&self, e1: &Expr, e2: &Expr) -> Result<Expr, String> {
-        match (self, e1, e2) {
-            (&BinOp::Equal, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Bool(n1 == n2))
-            }
-            (&BinOp::Equal, &Expr::Bool(ref b1), &Expr::Bool(ref b2)) => Ok(Expr::Bool(b1 == b2)),
+        use self::BinOp::*;
+        use self::Expr::*;
+        use self::Literal::*;
+        Ok(Expr::Const(match (self, e1, e2) {
+            (&Equal, &Const(Number(ref n1)), &Const(Number(ref n2))) => Bool(n1 == n2),
+            (&Equal, &Const(Bool(ref b1)), &Const(Bool(ref b2))) => Bool(b1 == b2),
 
-            (&BinOp::NotEqual, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Bool(n1 != n2))
-            }
-            (&BinOp::NotEqual, &Expr::Bool(ref b1), &Expr::Bool(ref b2)) => {
-                Ok(Expr::Bool(b1 != b2))
-            }
+            (&NotEqual, &Const(Number(ref n1)), &Const(Number(ref n2))) => Bool(n1 != n2),
+            (&NotEqual, &Const(Bool(ref b1)), &Const(Bool(ref b2))) => Bool(b1 != b2),
 
-            (&BinOp::LessThan, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Bool(n1 < n2))
-            }
-            (&BinOp::GreaterThan, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Bool(n1 > n2))
-            }
+            (&LessThan, &Const(Number(ref n1)), &Const(Number(ref n2))) => Bool(n1 < n2),
+            (&GreaterThan, &Const(Number(ref n1)), &Const(Number(ref n2))) => Bool(n1 > n2),
 
-            (&BinOp::Add, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Number(n1 + n2))
-            }
-            (&BinOp::Sub, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Number(n1 - n2))
-            }
-            (&BinOp::Mult, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Number(n1 * n2))
-            }
-            (&BinOp::Div, &Expr::Number(ref n1), &Expr::Number(ref n2)) => {
-                Ok(Expr::Number(n1 / n2))
-            }
-            (op, e1, e2) => Err(format!("cannot {} for {} and {}", op, e1, e2)),
-        }
+            (&Add, &Const(Number(ref n1)), &Const(Number(ref n2))) => Number(n1 + n2),
+            (&Sub, &Const(Number(ref n1)), &Const(Number(ref n2))) => Number(n1 - n2),
+            (&Mult, &Const(Number(ref n1)), &Const(Number(ref n2))) => Number(n1 * n2),
+            (&Div, &Const(Number(ref n1)), &Const(Number(ref n2))) => Number(n1 / n2),
+            (op, e1, e2) => return Err(format!("cannot {} for {} and {}", op, e1, e2)),
+        }))
     }
 }
 
@@ -67,13 +51,8 @@ impl Expr {
                 body.eval(&new_context)
             }
             &Expr::LetType(_, _, box ref body) => body.eval(&context),
-            &Expr::Sequence(box ref e1, box ref e2) => Expr::Apply(
-                box Expr::Lambda("_".to_string(), box Type::Unit, box e2.clone()),
-                box e1.clone(),
-            )
-            .eval(context),
             &Expr::If(box ref cond, box ref tr, box ref fl) => match cond.eval(context)? {
-                Expr::Bool(c) => {
+                Expr::Const(Literal::Bool(c)) => {
                     if c {
                         tr.eval(context)
                     } else {
@@ -86,7 +65,7 @@ impl Expr {
                 op.eval(&e1.eval(context)?, &e2.eval(context)?)
             }
             &Expr::Dot(box ref e, ref label) => match e.eval(context)? {
-                Expr::Record(v) => {
+                Expr::Const(Literal::Record(v)) => {
                     let found = v.iter().find(|e| e.0 == label.clone());
                     if let Some(branch) = found {
                         Ok(*branch.1.clone())
@@ -97,7 +76,7 @@ impl Expr {
                 _ => Err(format!("can not apply dot operator for non record")),
             },
             &Expr::Match(box ref e, ref branches) => match e {
-                &Expr::Variant(ref label, box ref e, box ref ty) => {
+                &Expr::Const(Literal::Variant(ref label, box ref e, box ref ty)) => {
                     let found = branches.iter().find(|br| label.clone() == br.0);
                     if let Some(branch) = found {
                         let new_context = context.add(&branch.1, e);
@@ -108,31 +87,11 @@ impl Expr {
                 }
                 _ => Err(format!("can not apply match operator for non variant")),
             },
-            &Expr::Println(box ref e) => match e.eval(context) {
-                Ok(e) => {
-                    match e.eval(context)? {
-                        Expr::Number(n) => println!("{}", n),
-                        Expr::Bool(b) => println!("{}", b),
-                        Expr::Unit => println!("unit"),
-                        Expr::Lambda(name, box ty, box e) => {
-                            println!("func {}: {:?} -> {:?}", name, ty, e)
-                        }
-                        Expr::Record(branches) => {
-                            print!("{{");
-                            for branch in branches {
-                                print!("{}: {:?}, ", branch.0, branch.1)
-                            }
-                            println!("}}")
-                        }
-                        Expr::Variant(label, box expr, box ty) => {
-                            print!("{:?}::{}({:?})", ty, label, expr)
-                        }
-                        _ => panic!("internal error: {:?} is not value", e),
-                    };
-                    Ok(Expr::Unit)
-                }
-                Err(e) => Err(e),
-            },
+            &Expr::Println(box ref e) => {
+                let e = e.eval(context)?;
+                println!("{}", e);
+                Ok(e)
+            }
             &Expr::Var(ref name) => context.lookup(name),
             _ => Ok(self.clone()),
         }

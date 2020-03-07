@@ -1,5 +1,5 @@
 use context::Context;
-use expr::{BinOp, Expr};
+use expr::{BinOp, Expr, Literal};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,11 +53,11 @@ impl fmt::Display for Type {
 impl Type {
     pub fn from_expr(expr: &Expr, context: &Context<Type>) -> Result<Type, String> {
         match *expr {
-            Expr::Number(_) => Ok(Type::Int),
-            Expr::Bool(_) => Ok(Type::Bool),
-            Expr::Char(_) => Ok(Type::Char),
-            Expr::Unit => Ok(Type::Unit),
-            Expr::List(ref exprs) => {
+            Expr::Const(Literal::Number(_)) => Ok(Type::Int),
+            Expr::Const(Literal::Bool(_)) => Ok(Type::Bool),
+            Expr::Const(Literal::Char(_)) => Ok(Type::Char),
+            Expr::Const(Literal::Unit) => Ok(Type::Unit),
+            Expr::Const(Literal::List(ref exprs)) => {
                 let mut element_ty = None;
                 for expr in exprs {
                     let expr_ty = Type::from_expr(expr, context)?;
@@ -105,18 +105,11 @@ impl Type {
                 }
             }
             Expr::LetType(ref name, box ref ty, box ref body) => {
-                let mut body = body.clone(); // TODO
+                let body = body.clone(); // TODO
                 let mut type_alias = HashMap::new();
                 type_alias.insert(name.clone(), ty.clone());
-                body.subst_typealias(&type_alias);
+                // body.subst_typealias(&type_alias);
                 Type::from_expr(&body, &context)
-            }
-            Expr::Sequence(box ref e1, box ref e2) => {
-                if Type::from_expr(e1, context)? == Type::Unit {
-                    Type::from_expr(e2, context)
-                } else {
-                    Err(format!("{:?} is not unit type", e1))
-                }
             }
             Expr::If(box ref cond, box ref tr, box ref fl) => {
                 let cond_ty = Type::from_expr(cond, context)?;
@@ -164,7 +157,7 @@ impl Type {
                     Err(format!("can not add non numeric values"))
                 }
             }
-            Expr::Record(ref v) => {
+            Expr::Const(Literal::Record(ref v)) => {
                 let branches: Vec<_> = v
                     .iter()
                     .map(
@@ -176,7 +169,7 @@ impl Type {
                     .collect();
                 Ok(Type::Record(branches))
             }
-            Expr::Variant(ref tag, box ref e, box ref ty) => {
+            Expr::Const(Literal::Variant(ref tag, box ref e, box ref ty)) => {
                 if let Type::Variant(v) = ty.clone() {
                     let found = v.iter().find(|e| e.0 == tag.clone());
                     if let Some(branch) = found {

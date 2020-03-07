@@ -1,13 +1,13 @@
 use context::Context;
-use expr::{parser::*, BinOp, Expr};
+use expr::{parser::*, BinOp, Expr, Literal};
 use type_::Type;
 
 #[test]
 fn literal() {
-    assert_eq!(expr("123"), Ok(Expr::Number(123)));
-    assert_eq!(expr("true"), Ok(Expr::Bool(true)));
-    assert_eq!(expr("false"), Ok(Expr::Bool(false)));
-    assert_eq!(expr("unit"), Ok(Expr::Unit));
+    assert_eq!(expr("123"), Ok(Expr::Const(Literal::Number(123))));
+    assert_eq!(expr("true"), Ok(Expr::Const(Literal::Bool(true))));
+    assert_eq!(expr("false"), Ok(Expr::Const(Literal::Bool(false))));
+    assert_eq!(expr("unit"), Ok(Expr::Const(Literal::Unit)));
     assert_eq!(expr("a"), Ok(Expr::Var("a".to_string())));
 }
 
@@ -22,10 +22,13 @@ fn apply() {
                 box Type::Int,
                 box Expr::Var("x".to_string())
             ),
-            box Expr::Number(1)
+            box Expr::Const(Literal::Number(1))
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Number(1)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(1)))
+    );
 }
 
 #[test]
@@ -33,12 +36,20 @@ fn sequence() {
     let e = expr("1; 2; 3");
     assert_eq!(
         e,
-        Ok(Expr::Sequence(
-            box Expr::Number(1),
-            box Expr::Sequence(box Expr::Number(2), box Expr::Number(3))
+        Ok(Expr::Let(
+            "<dummy>".to_string(),
+            box Expr::Const(Literal::Number(1)),
+            box Expr::Let(
+                "<dummy>".to_string(),
+                box Expr::Const(Literal::Number(2)),
+                box Expr::Const(Literal::Number(3))
+            )
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Number(3)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(3)))
+    );
 }
 
 #[test]
@@ -47,12 +58,15 @@ fn if_() {
     assert_eq!(
         e,
         Ok(Expr::If(
-            box Expr::Bool(true),
-            box Expr::Number(1),
-            box Expr::Number(2)
+            box Expr::Const(Literal::Bool(true)),
+            box Expr::Const(Literal::Number(1)),
+            box Expr::Const(Literal::Number(2))
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Number(1)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(1)))
+    );
 }
 
 #[test]
@@ -64,13 +78,20 @@ fn arithmetic() {
             BinOp::Add,
             box Expr::BinOp(
                 BinOp::Add,
-                box Expr::Number(1),
-                box Expr::BinOp(BinOp::Mult, box Expr::Number(2), box Expr::Number(5))
+                box Expr::Const(Literal::Number(1)),
+                box Expr::BinOp(
+                    BinOp::Mult,
+                    box Expr::Const(Literal::Number(2)),
+                    box Expr::Const(Literal::Number(5))
+                )
             ),
-            box Expr::Number(6)
+            box Expr::Const(Literal::Number(6))
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Number(17)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(17)))
+    );
 }
 
 #[test]
@@ -80,22 +101,28 @@ fn compare() {
         e,
         Ok(Expr::BinOp(
             BinOp::LessThan,
-            box Expr::Number(1),
-            box Expr::Number(2)
+            box Expr::Const(Literal::Number(1)),
+            box Expr::Const(Literal::Number(2))
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Bool(true)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Bool(true)))
+    );
 
     let e = expr("1 > 2");
     assert_eq!(
         e,
         Ok(Expr::BinOp(
             BinOp::GreaterThan,
-            box Expr::Number(1),
-            box Expr::Number(2)
+            box Expr::Const(Literal::Number(1)),
+            box Expr::Const(Literal::Number(2))
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Bool(false)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Bool(false)))
+    );
 }
 
 #[test]
@@ -103,17 +130,17 @@ fn record() {
     let e = expr("{ id=42, value=123 }");
     assert_eq!(
         e,
-        Ok(Expr::Record(vec![
-            ("id".to_string(), box Expr::Number(42)),
-            ("value".to_string(), box Expr::Number(123))
-        ]))
+        Ok(Expr::Const(Literal::Record(vec![
+            ("id".to_string(), box Expr::Const(Literal::Number(42))),
+            ("value".to_string(), box Expr::Const(Literal::Number(123)))
+        ])))
     );
     assert_eq!(
         e.unwrap().eval(&Context::new()),
-        Ok(Expr::Record(vec![
-            ("id".to_string(), box Expr::Number(42)),
-            ("value".to_string(), box Expr::Number(123))
-        ]))
+        Ok(Expr::Const(Literal::Record(vec![
+            ("id".to_string(), box Expr::Const(Literal::Number(42))),
+            ("value".to_string(), box Expr::Const(Literal::Number(123)))
+        ])))
     );
 }
 
@@ -122,19 +149,19 @@ fn tuple() {
     let e = expr("(1, 2, 3)");
     assert_eq!(
         e,
-        Ok(Expr::Record(vec![
-            ("0".to_string(), box Expr::Number(1)),
-            ("1".to_string(), box Expr::Number(2)),
-            ("2".to_string(), box Expr::Number(3))
-        ]))
+        Ok(Expr::Const(Literal::Record(vec![
+            ("0".to_string(), box Expr::Const(Literal::Number(1))),
+            ("1".to_string(), box Expr::Const(Literal::Number(2))),
+            ("2".to_string(), box Expr::Const(Literal::Number(3)))
+        ])))
     );
     assert_eq!(
         e.unwrap().eval(&Context::new()),
-        Ok(Expr::Record(vec![
-            ("0".to_string(), box Expr::Number(1)),
-            ("1".to_string(), box Expr::Number(2)),
-            ("2".to_string(), box Expr::Number(3))
-        ]))
+        Ok(Expr::Const(Literal::Record(vec![
+            ("0".to_string(), box Expr::Const(Literal::Number(1))),
+            ("1".to_string(), box Expr::Const(Literal::Number(2))),
+            ("2".to_string(), box Expr::Const(Literal::Number(3)))
+        ])))
     );
 }
 
@@ -144,14 +171,17 @@ fn dot() {
     assert_eq!(
         e,
         Ok(Expr::Dot(
-            box Expr::Record(vec![
-                ("id".to_string(), box Expr::Number(42)),
-                ("value".to_string(), box Expr::Number(123))
-            ]),
+            box Expr::Const(Literal::Record(vec![
+                ("id".to_string(), box Expr::Const(Literal::Number(42))),
+                ("value".to_string(), box Expr::Const(Literal::Number(123)))
+            ])),
             "id".to_string()
         ))
     );
-    assert_eq!(e.unwrap().eval(&Context::new()), Ok(Expr::Number(42)));
+    assert_eq!(
+        e.unwrap().eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(42)))
+    );
 }
 
 #[test]
@@ -166,20 +196,20 @@ fn variant() {
         Expr::LetType(
             "Nyan".to_string(),
             box nyan_ty,
-            box Expr::Variant(
+            box Expr::Const(Literal::Variant(
                 "Hoge".to_string(),
-                box Expr::Number(42),
+                box Expr::Const(Literal::Number(42)),
                 box Type::Variable("Nyan".to_string()),
-            ),
+            )),
         )
     );
     assert_eq!(
         expr.eval(&Context::new()),
-        Ok(Expr::Variant(
+        Ok(Expr::Const(Literal::Variant(
             "Hoge".to_string(),
-            box Expr::Number(42),
+            box Expr::Const(Literal::Number(42)),
             box Type::Variable("Nyan".to_string()),
-        ))
+        )))
     );
 }
 
@@ -188,7 +218,11 @@ fn list() {
     let e = expr("[1, 2, 3]").unwrap();
     assert_eq!(
         e,
-        Expr::List(vec![Expr::Number(1), Expr::Number(2), Expr::Number(3)])
+        Expr::Const(Literal::List(vec![
+            Expr::Const(Literal::Number(1)),
+            Expr::Const(Literal::Number(2)),
+            Expr::Const(Literal::Number(3))
+        ]))
     );
     assert_eq!(
         Type::from_expr(&e, &Context::new()),
@@ -196,11 +230,11 @@ fn list() {
     );
     assert_eq!(
         e.eval(&Context::new()),
-        Ok(Expr::List(vec![
-            Expr::Number(1),
-            Expr::Number(2),
-            Expr::Number(3)
-        ]))
+        Ok(Expr::Const(Literal::List(vec![
+            Expr::Const(Literal::Number(1)),
+            Expr::Const(Literal::Number(2)),
+            Expr::Const(Literal::Number(3))
+        ])))
     );
 }
 
@@ -209,12 +243,12 @@ fn string() {
     let e = expr("\"nyan\"").unwrap();
     assert_eq!(
         e,
-        Expr::List(vec![
-            Expr::Char('n'),
-            Expr::Char('y'),
-            Expr::Char('a'),
-            Expr::Char('n')
-        ])
+        Expr::Const(Literal::List(vec![
+            Expr::Const(Literal::Char('n')),
+            Expr::Const(Literal::Char('y')),
+            Expr::Const(Literal::Char('a')),
+            Expr::Const(Literal::Char('n'))
+        ]))
     );
     assert_eq!(
         Type::from_expr(&e, &Context::new()),
@@ -222,12 +256,12 @@ fn string() {
     );
     assert_eq!(
         e.eval(&Context::new()),
-        Ok(Expr::List(vec![
-            Expr::Char('n'),
-            Expr::Char('y'),
-            Expr::Char('a'),
-            Expr::Char('n')
-        ]))
+        Ok(Expr::Const(Literal::List(vec![
+            Expr::Const(Literal::Char('n')),
+            Expr::Const(Literal::Char('y')),
+            Expr::Const(Literal::Char('a')),
+            Expr::Const(Literal::Char('n'))
+        ])))
     );
 }
 
@@ -244,7 +278,7 @@ fn match_() {
         box Expr::BinOp(
             BinOp::Add,
             box Expr::Var("x".to_string()),
-            box Expr::Number(1),
+            box Expr::Const(Literal::Number(1)),
         ),
     );
     let fuga_branch = (
@@ -252,8 +286,8 @@ fn match_() {
         "x".to_string(),
         box Expr::If(
             box Expr::Var("x".to_string()),
-            box Expr::Number(100),
-            box Expr::Number(200),
+            box Expr::Const(Literal::Number(100)),
+            box Expr::Const(Literal::Number(200)),
         ),
     );
 
@@ -263,16 +297,19 @@ fn match_() {
             "Nyan".to_string(),
             box nyan_ty,
             box Expr::Match(
-                box Expr::Variant(
+                box Expr::Const(Literal::Variant(
                     "Hoge".to_string(),
-                    box Expr::Number(42),
+                    box Expr::Const(Literal::Number(42)),
                     box Type::Variable("Nyan".to_string())
-                ),
+                )),
                 vec![hoge_branch, fuga_branch]
             )
         )
     );
-    assert_eq!(expr.eval(&Context::new()), Ok(Expr::Number(43)));
+    assert_eq!(
+        expr.eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(43)))
+    );
 }
 
 #[test]
@@ -280,15 +317,17 @@ fn println() {
     let e = expr("println 1; println true; println unit").unwrap();
     assert_eq!(
         e,
-        Expr::Sequence(
-            box Expr::Println(box Expr::Number(1)),
-            box Expr::Sequence(
-                box Expr::Println(box Expr::Bool(true)),
-                box Expr::Println(box Expr::Unit)
+        Expr::Let(
+            "<dummy>".to_string(),
+            box Expr::Println(box Expr::Const(Literal::Number(1))),
+            box Expr::Let(
+                "<dummy>".to_string(),
+                box Expr::Println(box Expr::Const(Literal::Bool(true))),
+                box Expr::Println(box Expr::Const(Literal::Unit))
             )
         )
     );
-    assert_eq!(e.eval(&Context::new()), Ok(Expr::Unit));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Const(Literal::Unit)));
 }
 
 #[test]
@@ -304,13 +343,19 @@ fn func() {
                 box Expr::BinOp(
                     BinOp::Add,
                     box Expr::Var("a".to_string()),
-                    box Expr::Number(12)
+                    box Expr::Const(Literal::Number(12))
                 )
             ),
-            box Expr::Apply(box Expr::Var("f".to_string()), box Expr::Number(13))
+            box Expr::Apply(
+                box Expr::Var("f".to_string()),
+                box Expr::Const(Literal::Number(13))
+            )
         )
     );
-    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(25)));
+    assert_eq!(
+        e.eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(25)))
+    );
 }
 
 #[test]
@@ -331,9 +376,9 @@ fn rec_func() {
                     box Expr::BinOp(
                         BinOp::LessThan,
                         box Expr::Var("x".to_string()),
-                        box Expr::Number(2)
+                        box Expr::Const(Literal::Number(2))
                     ),
-                    box Expr::Number(1),
+                    box Expr::Const(Literal::Number(1)),
                     box Expr::BinOp(
                         BinOp::Add,
                         box Expr::Apply(
@@ -341,7 +386,7 @@ fn rec_func() {
                             box Expr::BinOp(
                                 BinOp::Sub,
                                 box Expr::Var("x".to_string()),
-                                box Expr::Number(1)
+                                box Expr::Const(Literal::Number(1))
                             )
                         ),
                         box Expr::Apply(
@@ -349,16 +394,19 @@ fn rec_func() {
                             box Expr::BinOp(
                                 BinOp::Sub,
                                 box Expr::Var("x".to_string()),
-                                box Expr::Number(2)
+                                box Expr::Const(Literal::Number(2))
                             )
                         )
                     )
                 )
             ),
-            box Expr::Apply(box Expr::Var("fib".to_string()), box Expr::Number(3))
+            box Expr::Apply(
+                box Expr::Var("fib".to_string()),
+                box Expr::Const(Literal::Number(3))
+            )
         )
     );
-    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(3)));
+    assert_eq!(e.eval(&Context::new()), Ok(Expr::Const(Literal::Number(3))));
 }
 
 #[test]
@@ -366,7 +414,14 @@ fn let_type_func() {
     let e = expr("type a = Int; 42").unwrap();
     assert_eq!(
         e,
-        Expr::LetType("a".to_string(), box Type::Int, box Expr::Number(42))
+        Expr::LetType(
+            "a".to_string(),
+            box Type::Int,
+            box Expr::Const(Literal::Number(42))
+        )
     );
-    assert_eq!(e.eval(&Context::new()), Ok(Expr::Number(42)));
+    assert_eq!(
+        e.eval(&Context::new()),
+        Ok(Expr::Const(Literal::Number(42)))
+    );
 }

@@ -1,5 +1,5 @@
 use crate::{
-    expr::{BinOp, Expr},
+    expr::{BinOp, Expr, Literal},
     type_::Type,
 };
 use peg;
@@ -48,7 +48,7 @@ rule let_expr() -> Expr
 
 rule sequence_expr() -> Expr
     = e1:inner_expr() SEMICOLON() e2:sequence_expr() {
-        Expr::Sequence(box e1, box e2)
+        Expr::Let("<dummy>".to_string(), box e1, box e2)
     }
     / e:inner_expr() { e }
 
@@ -95,7 +95,7 @@ rule dot_expr() -> Expr
 
 rule factor_expr() -> Expr
     = lambda_expr()
-    / n:number() { Expr::Number(n) }
+    / n:number() { Expr::Const(Literal::Number(n)) }
     / boolean_expr()
     / unit_expr()
     / char_expr()
@@ -115,7 +115,7 @@ rule lambda_expr() -> Expr
 
 rule record_expr() -> Expr
     = LEFT_BRACE() branches:(label:ident() EQUAL() e:expr() COMMA()? {(label, box e)})* RIGHT_BRACE() {
-        Expr::Record(branches)
+        Expr::Const(Literal::Record(branches))
     }
 
 rule tuple_expr() -> Expr
@@ -125,17 +125,17 @@ rule tuple_expr() -> Expr
         let branches: Vec<_> = exprs.into_iter().enumerate().map(|(i, e)| {
             (i.to_string(), box e)
         }).collect();
-        Expr::Record(branches)
+        Expr::Const(Literal::Record(branches))
     }
 
 rule variant_expr() -> Expr
     = ty:type_() DOUBLE_COLON() label:ident() LEFT_PAREN() e:expr() RIGHT_PAREN() {
-        Expr::Variant(label, box e, box ty)
+        Expr::Const(Literal::Variant(label, box e, box ty))
     }
 
 rule list_expr() -> Expr
     = LEFT_SQUARE_BRACKET()  exprs:(expr() ** COMMA()) RIGHT_SQUARE_BRACKET() {
-        Expr::List(exprs)
+        Expr::Const(Literal::List(exprs))
     }
 
 rule println_expr() -> Expr
@@ -145,18 +145,18 @@ rule number() -> i32
     = n:$(['0'..='9']+) __ { n.parse().unwrap() }
 
 rule boolean_expr() -> Expr
-    = TRUE() { Expr::Bool(true) }
-    / FALSE() { Expr::Bool(false) }
+    = TRUE() { Expr::Const(Literal::Bool(true)) }
+    / FALSE() { Expr::Const(Literal::Bool(false)) }
 
 rule unit_expr() -> Expr
-    = UNIT_V() { Expr::Unit }
+    = UNIT_V() { Expr::Const(Literal::Unit) }
 
 rule char_expr() -> Expr
-    = SINGLE_QUOTE() c:$([_]) SINGLE_QUOTE() { Expr::Char(c.chars().nth(0).unwrap()) }
+    = SINGLE_QUOTE() c:$([_]) SINGLE_QUOTE() { Expr::Const(Literal::Char(c.chars().nth(0).unwrap())) }
 
 rule string_expr() -> Expr
     = DOUBLE_QUOTE() s:$((!"\"" [_])*) DOUBLE_QUOTE() {
-        Expr::List(s.chars().map(|c| Expr::Char(c)).collect())
+        Expr::Const(Literal::List(s.chars().map(|c| Expr::Const(Literal::Char(c))).collect()))
     }
 
 rule ident() -> String
