@@ -5,12 +5,7 @@ extern crate peg;
 
 mod context;
 mod expr;
-mod parser;
-mod program;
 mod type_;
-
-#[cfg(test)]
-mod test;
 
 use context::Context;
 use std::env;
@@ -32,11 +27,8 @@ fn main() {
 }
 
 fn exec(src: &str) {
-    use program::Program;
-    match parser::program(src) {
-        Ok(Program { expr, type_aliases }) => {
-            let mut expr = expr;
-            expr.subst_typealias(&type_aliases);
+    match expr::parser::expr(src) {
+        Ok(expr) => {
             let ty = Type::from_expr(&expr, &Context::new()).expect("type error");
             let value = expr.eval(&Context::new()).expect("invalid operation");
             println!("{}: {}", value, ty);

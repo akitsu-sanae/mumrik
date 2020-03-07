@@ -1,6 +1,5 @@
 use context::Context;
-use expr::{BinOp, Expr};
-use parser::*;
+use expr::{parser::*, BinOp, Expr};
 use type_::Type;
 
 #[test]
@@ -157,26 +156,29 @@ fn dot() {
 
 #[test]
 fn variant() {
-    let mut program = program("type Nyan = enum { Hoge: Int, Fuga: Bool} Nyan::Hoge(42)").unwrap();
-    program.expr.subst_typealias(&program.type_aliases);
+    let expr = expr("type Nyan = enum { Hoge: Int, Fuga: Bool}; Nyan::Hoge(42)").unwrap();
     let nyan_ty = Type::Variant(vec![
         ("Hoge".to_string(), box Type::Int),
         ("Fuga".to_string(), box Type::Bool),
     ]);
     assert_eq!(
-        program.expr,
-        Expr::Variant(
-            "Hoge".to_string(),
-            box Expr::Number(42),
-            box nyan_ty.clone()
+        expr,
+        Expr::LetType(
+            "Nyan".to_string(),
+            box nyan_ty,
+            box Expr::Variant(
+                "Hoge".to_string(),
+                box Expr::Number(42),
+                box Type::Variable("Nyan".to_string()),
+            ),
         )
     );
     assert_eq!(
-        program.expr.eval(&Context::new()),
+        expr.eval(&Context::new()),
         Ok(Expr::Variant(
             "Hoge".to_string(),
             box Expr::Number(42),
-            box nyan_ty
+            box Type::Variable("Nyan".to_string()),
         ))
     );
 }
@@ -231,39 +233,46 @@ fn string() {
 
 #[test]
 fn match_() {
-    let mut program = program("type Nyan = enum { Hoge: Int Fuga: Bool} match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
-    program.expr.subst_typealias(&program.type_aliases);
+    let expr = expr("type Nyan = enum { Hoge: Int Fuga: Bool}; match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
     let nyan_ty = Type::Variant(vec![
         ("Hoge".to_string(), box Type::Int),
         ("Fuga".to_string(), box Type::Bool),
     ]);
+    let hoge_branch = (
+        "Hoge".to_string(),
+        "x".to_string(),
+        box Expr::BinOp(
+            BinOp::Add,
+            box Expr::Var("x".to_string()),
+            box Expr::Number(1),
+        ),
+    );
+    let fuga_branch = (
+        "Fuga".to_string(),
+        "x".to_string(),
+        box Expr::If(
+            box Expr::Var("x".to_string()),
+            box Expr::Number(100),
+            box Expr::Number(200),
+        ),
+    );
+
     assert_eq!(
-        program.expr,
-        Expr::Match(
-            box Expr::Variant("Hoge".to_string(), box Expr::Number(42), box nyan_ty),
-            vec![
-                (
+        expr,
+        Expr::LetType(
+            "Nyan".to_string(),
+            box nyan_ty,
+            box Expr::Match(
+                box Expr::Variant(
                     "Hoge".to_string(),
-                    "x".to_string(),
-                    box Expr::BinOp(
-                        BinOp::Add,
-                        box Expr::Var("x".to_string()),
-                        box Expr::Number(1)
-                    )
+                    box Expr::Number(42),
+                    box Type::Variable("Nyan".to_string())
                 ),
-                (
-                    "Fuga".to_string(),
-                    "x".to_string(),
-                    box Expr::If(
-                        box Expr::Var("x".to_string()),
-                        box Expr::Number(100),
-                        box Expr::Number(200)
-                    )
-                )
-            ]
+                vec![hoge_branch, fuga_branch]
+            )
         )
     );
-    assert_eq!(program.expr.eval(&Context::new()), Ok(Expr::Number(43)));
+    assert_eq!(expr.eval(&Context::new()), Ok(Expr::Number(43)));
 }
 
 #[test]

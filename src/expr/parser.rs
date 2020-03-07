@@ -1,26 +1,10 @@
 use crate::{
     expr::{BinOp, Expr},
-    program::Program,
     type_::Type,
 };
 use peg;
-use std::collections::HashMap;
-use std::iter::FromIterator;
 
 peg::parser!(grammar rules() for str {
-
-pub rule program() -> Program
-    = __ type_aliases:type_aliases() e:expr() {
-        Program {
-            expr: e,
-            type_aliases: type_aliases
-        }
-    }
-
-rule type_aliases() -> HashMap<String, Type>
-    = aliases:(TYPE() name:ident() EQUAL() ty:type_() {(name, ty)})* {
-        HashMap::from_iter(aliases.into_iter())
-    }
 
 pub rule type_() -> Type
     = __ ty:variant_type() { ty }
