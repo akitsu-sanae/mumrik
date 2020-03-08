@@ -30,6 +30,26 @@ fn main() {
     }
 }
 
+struct Expected(Vec<String>);
+
+impl Expected {
+    pub fn from(set: peg::error::ExpectedSet) -> Expected {
+        Expected(
+            set.tokens()
+                .filter(|s| *s != "\' \' | \'\\t\' | \'\\r\' | \'\\n\'")
+                .map(|s| s.to_string())
+                .collect(),
+        )
+    }
+}
+
+use std::fmt;
+impl fmt::Display for Expected {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0.join(", "))
+    }
+}
+
 fn exec(src: &str) {
     match parser::expr(src) {
         Ok(expr) => {
@@ -42,8 +62,10 @@ fn exec(src: &str) {
             println!("{}", lines[err.location.line - 1]);
             println!("\u{001B}[31m{}^", " ".repeat(err.location.column - 1));
             println!(
-                "syntax error at line:{} column: {}\nexpected: {:?}\u{001B}[39m",
-                err.location.line, err.location.column, err.expected
+                "syntax error at line:{} column: {}\nexpected: {}\u{001B}[39m",
+                err.location.line,
+                err.location.column,
+                Expected::from(err.expected)
             )
         }
     };
