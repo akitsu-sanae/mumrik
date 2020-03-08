@@ -7,35 +7,44 @@ use peg;
 peg::parser!(grammar rules() for str {
 
 pub rule type_() -> Type
-    = __ ty:variant_type() { ty }
-    / __ ty:primitive_type() { ty }
+    = __ ty:func_type() { ty }
 
-rule variant_type() -> Type
-    = ENUM() LEFT_BRACE() branches:(tag:ident() COLON() ty:type_() COMMA()? { (tag, box ty) })+ RIGHT_BRACE() {
-        Type::Variant(branches)
+rule func_type() -> Type
+    = head:primitive_type() tail:(ARROW() ty:func_type() { ty })* {
+        tail.into_iter().fold(head, |acc, ty| {
+            Type::Function(box acc, box ty)
+        })
     }
 
 rule primitive_type() -> Type
-    = INT() { Type::Int }
+    = variant_type()
+    / record_type()
+    / INT() { Type::Int }
     / BOOL() { Type::Bool }
     / name:ident() { Type::Variable(name) }
+    / LEFT_PAREN() ty:func_type() RIGHT_PAREN() { ty }
+
+rule variant_type() -> Type
+    = ENUM() LEFT_BRACE() branches:(tag:ident() COLON() ty:type_() COMMA()? { (tag, ty) })+ RIGHT_BRACE() {
+        Type::Variant(branches)
+    }
+
+rule record_type() -> Type
+    = LEFT_BRACE() branches:(label:ident() COLON() ty:type_() COMMA()? { (label, ty) })* RIGHT_BRACE() {
+        Type::Record(branches)
+    }
 
 pub rule expr() -> Expr
-    = __ e:func_expr() { e }
+    = __ e:toplevel_expr() { e }
 
-rule func_expr() -> Expr
-    = FUNC() name:ident() arg:ident() COLON() arg_ty:type_() LEFT_BRACE() body:let_expr() RIGHT_BRACE() after:expr() {
-      // `func f arg: T = expr`
-      // is syntax sugar of `let f = func arg: T -> expr`
-      Expr::Let(name, box Expr::Lambda(arg, box arg_ty, box body), box after)
+rule toplevel_expr() -> Expr
+    = FUNC() name:ident() arg:ident() COLON() arg_ty:type_() LEFT_BRACE() e1:inner_expr() RIGHT_BRACE() e2:toplevel_expr() {
+      Expr::Let(name, box Expr::Lambda(arg, box arg_ty, box e1), box e2)
     }
-    / REC() FUNC() name:ident() arg:ident() COLON() arg_ty:type_() COLON() ret_ty:type_() LEFT_BRACE() body:let_expr() RIGHT_BRACE() after:expr() {
-      Expr::LetRec(name, box Type::Function(box arg_ty.clone(), box ret_ty), box Expr::Lambda(arg, box arg_ty, box body), box after)
+    / REC() FUNC() name:ident() arg:ident() COLON() arg_ty:type_() COLON() ret_ty:type_() LEFT_BRACE() e1:inner_expr() RIGHT_BRACE() e2:toplevel_expr() {
+      Expr::LetRec(name, box Type::Function(box arg_ty.clone(), box ret_ty), box Expr::Lambda(arg, box arg_ty, box e1), box e2)
     }
-    / let_expr()
-
-rule let_expr() -> Expr
-    = LET() name:ident() EQUAL() init:inner_expr() SEMICOLON() body:expr() {
+    / LET() name:ident() EQUAL() init:inner_expr() SEMICOLON() body:expr() {
         Expr::Let(name, box init, box body)
     }
     / REC() LET() name:ident() COLON() ty:type_() EQUAL() init:inner_expr() SEMICOLON() body:expr() {
@@ -44,16 +53,22 @@ rule let_expr() -> Expr
     / TYPE() name:ident() EQUAL() ty:type_() SEMICOLON() body:expr() {
         Expr::LetType(name, box ty, box body)
     }
-    / sequence_expr()
-
-rule sequence_expr() -> Expr
-    = e1:inner_expr() SEMICOLON() e2:sequence_expr() {
-        Expr::Let("<dummy>".to_string(), box e1, box e2)
-    }
-    / e:inner_expr() { e }
+    / inner_expr()
 
 rule inner_expr() -> Expr
-    = if_expr()
+    = e1:if_expr() SEMICOLON() e2:inner_expr() {
+        Expr::Let("<dummy>".to_string(), box e1, box e2)
+    }
+    / LET() name:ident() EQUAL() e1:if_expr() SEMICOLON() e2:inner_expr() {
+        Expr::Let(name, box e1, box e2)
+    }
+    / REC() LET() name:ident() COLON() ty:type_() EQUAL() e1:if_expr() SEMICOLON() e2:inner_expr() {
+        Expr::LetRec(name, box ty, box e1, box e2)
+    }
+    / TYPE() name:ident() EQUAL() ty:type_() SEMICOLON() e:inner_expr() {
+        Expr::LetType(name, box ty, box e)
+    }
+    / if_expr()
 
 rule if_expr() -> Expr
     = IF() cond:expr() LEFT_BRACE() tr:expr() RIGHT_BRACE() ELSE() LEFT_BRACE() fl:expr() RIGHT_BRACE() {
@@ -139,7 +154,7 @@ rule list_expr() -> Expr
     }
 
 rule println_expr() -> Expr
-    = PRINTLN() e:inner_expr() { Expr::Println(box e) }
+    = PRINTLN() e:if_expr() { Expr::Println(box e) }
 
 rule number() -> i32
     = n:$(['0'..='9']+) __ { n.parse().unwrap() }
@@ -189,6 +204,7 @@ rule DOUBLE_COLON() = "::" __
 rule SEMICOLON() = ";" __
 rule DOUBLE_EQUAL() = "==" __
 rule NOT_EQUAL() = "/=" __
+rule ARROW() = "->" __
 rule FAT_ARROW() = "=>" __
 rule PLUS() = "+" __
 rule MINUS() = "-" __

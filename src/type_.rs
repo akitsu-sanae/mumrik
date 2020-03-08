@@ -10,8 +10,8 @@ pub enum Type {
     Unit,
     Variable(String),
     Function(Box<Type>, Box<Type>),
-    Record(Vec<(String, Box<Type>)>),
-    Variant(Vec<(String, Box<Type>)>),
+    Record(Vec<(String, Type)>),
+    Variant(Vec<(String, Type)>),
     List(Box<Type>),
 }
 
@@ -29,20 +29,16 @@ impl fmt::Display for Type {
             Function(box ref from, box ref to) => write!(f, "{} -> {}", from, to),
             Record(ref data) => {
                 write!(f, "{{")?;
-                let tmp: Result<Vec<()>, _> = data
-                    .iter()
-                    .map(|&(ref label, box ref ty)| write!(f, "{}: {}", label, ty))
-                    .collect();
-                tmp?;
+                for &(ref label, ref ty) in data {
+                    write!(f, "{}: {}", label, ty)?;
+                }
                 write!(f, "}}")
             }
             Variant(ref data) => {
                 write!(f, "{{")?;
-                let tmp: Result<Vec<()>, _> = data
-                    .iter()
-                    .map(|&(ref label, ref ty)| write!(f, "{}: {},", label, ty))
-                    .collect();
-                tmp?;
+                for &(ref label, ref ty) in data {
+                    write!(f, "{}: {}", label, ty)?;
+                }
                 write!(f, "}}")
             }
             List(box ref ty) => write!(f, "List[{}]", ty),
@@ -158,24 +154,19 @@ impl Type {
                 }
             }
             Expr::Const(Literal::Record(ref v)) => {
-                let branches: Vec<_> = v
-                    .iter()
-                    .map(
-                        |&(ref label, ref expr)| match Type::from_expr(expr.as_ref(), context) {
-                            Ok(ty) => (label.clone(), box ty),
-                            Err(msg) => panic!("{:?}", msg),
-                        },
-                    )
-                    .collect();
+                let mut branches = vec![];
+                for &(ref label, ref expr) in v {
+                    let ty = Type::from_expr(expr, context)?;
+                    branches.push((label.clone(), ty));
+                }
                 Ok(Type::Record(branches))
             }
             Expr::Const(Literal::Variant(ref tag, box ref e, box ref ty)) => {
                 if let Type::Variant(v) = ty.clone() {
-                    let found = v.iter().find(|e| e.0 == tag.clone());
+                    let found = v.iter().find(|e| &e.0 == tag);
                     if let Some(branch) = found {
                         let e_ty = Type::from_expr(e, context)?;
-                        let ref branch_ty = branch.1;
-                        if &e_ty == branch_ty.as_ref() {
+                        if e_ty == branch.1 {
                             Ok(ty.clone())
                         } else {
                             Err(format!(
@@ -192,11 +183,9 @@ impl Type {
             }
             Expr::Dot(box ref e, ref label) => {
                 if let Type::Record(branches) = Type::from_expr(e, context)? {
-                    let branch = branches.iter().find(|e| e.0 == label.clone());
-                    if let Some(branch) = branch {
-                        Ok(*branch.1.clone())
-                    } else {
-                        Err(format!("not found such filed in {:?} * {}", e, label))
+                    match branches.into_iter().find(|e| &e.0 == label) {
+                        Some(branch) => Ok(branch.1),
+                        None => Err(format!("not found such filed in {:?} * {}", e, label)),
                     }
                 } else {
                     Err(format!("can not apply dot operator for non record"))
@@ -218,7 +207,7 @@ impl Type {
         let e_ty = Type::from_expr(e, context)?;
         let mut ret_ty = None;
         if let Type::Variant(v) = e_ty {
-            for (idx, (label, box ty)) in v.into_iter().enumerate() {
+            for (idx, (label, ty)) in v.into_iter().enumerate() {
                 let ref branch = branches[idx];
                 if label != branch.0 {
                     return Err(format!("not match label: {} and {}", label, branch.0));

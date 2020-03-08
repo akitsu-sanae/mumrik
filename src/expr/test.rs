@@ -188,8 +188,8 @@ fn dot() {
 fn variant() {
     let expr = expr("type Nyan = enum { Hoge: Int, Fuga: Bool}; Nyan::Hoge(42)").unwrap();
     let nyan_ty = Type::Variant(vec![
-        ("Hoge".to_string(), box Type::Int),
-        ("Fuga".to_string(), box Type::Bool),
+        ("Hoge".to_string(), Type::Int),
+        ("Fuga".to_string(), Type::Bool),
     ]);
     assert_eq!(
         expr,
@@ -269,8 +269,8 @@ fn string() {
 fn match_() {
     let expr = expr("type Nyan = enum { Hoge: Int Fuga: Bool}; match Nyan::Hoge(42) { Hoge x => x+1, Fuga x => if x { 100 } else { 200 } }").unwrap();
     let nyan_ty = Type::Variant(vec![
-        ("Hoge".to_string(), box Type::Int),
-        ("Fuga".to_string(), box Type::Bool),
+        ("Hoge".to_string(), Type::Int),
+        ("Fuga".to_string(), Type::Bool),
     ]);
     let hoge_branch = (
         "Hoge".to_string(),
