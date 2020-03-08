@@ -4,14 +4,18 @@
 extern crate peg;
 
 mod context;
+mod eval;
 mod expr;
+mod parser;
 mod type_;
+
+#[cfg(test)]
+mod tests;
 
 use context::Context;
 use std::env;
 use std::fs::File;
 use std::io::Read;
-use type_::Type;
 
 fn main() {
     let mut src = String::new();
@@ -27,10 +31,10 @@ fn main() {
 }
 
 fn exec(src: &str) {
-    match expr::parser::expr(src) {
+    match parser::expr(src) {
         Ok(expr) => {
-            let ty = Type::from_expr(&expr, &Context::new()).expect("type error");
-            let value = expr.eval(&Context::new()).expect("invalid operation");
+            let ty = type_::check(&expr, &Context::new()).expect("type error");
+            let value = eval::expr(&expr, &Context::new()).expect("invalid operation");
             println!("{}: {}", value, ty);
         }
         Err(err) => {
