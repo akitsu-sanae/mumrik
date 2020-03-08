@@ -1,6 +1,5 @@
 use context::Context;
 use expr::{BinOp, Expr, Literal};
-use std::collections::HashMap;
 
 pub mod printer;
 
@@ -17,6 +16,7 @@ pub enum Type {
     List(Box<Type>),
 }
 
+// Note: `context` includes both value-variable bindings and type-variable bindings
 pub fn check(expr: &Expr, context: &Context<Type>) -> Result<Type, String> {
     match *expr {
         Expr::Const(Literal::Number(_)) => Ok(Type::Int),
@@ -71,11 +71,9 @@ pub fn check(expr: &Expr, context: &Context<Type>) -> Result<Type, String> {
             }
         }
         Expr::LetType(ref name, box ref ty, box ref body) => {
-            let body = body.clone(); // TODO
-            let mut type_alias = HashMap::new();
-            type_alias.insert(name.clone(), ty.clone());
-            // body.subst_typealias(&type_alias);
-            check(&body, &context)
+            // Note: `name` is type-variable
+            let new_context = context.add(name, ty);
+            check(body, &new_context)
         }
         Expr::If(box ref cond, box ref tr, box ref fl) => {
             let cond_ty = check(cond, context)?;
