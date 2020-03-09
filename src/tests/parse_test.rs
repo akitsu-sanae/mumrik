@@ -1,7 +1,5 @@
-use crate::{
-    expr::{BinOp, Expr::*, Literal::*},
-    parser::*,
-};
+use expr::{BinOp, Expr::*, Literal::*};
+use parser::*;
 use type_::Type;
 
 #[test]
