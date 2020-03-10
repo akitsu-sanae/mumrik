@@ -1,8 +1,13 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
+#[macro_use]
+extern crate lazy_static;
+
+extern crate kazuma;
 extern crate peg;
 
+mod codegen;
 mod context;
 mod eval;
 mod expr;
