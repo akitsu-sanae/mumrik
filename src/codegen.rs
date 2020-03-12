@@ -1,95 +1,61 @@
-use expr::{
-    Expr::{self, *},
-    Literal::*,
-};
-use kazuma::program;
-use std::sync::RwLock;
-lazy_static! {
-    static ref FRESH_IDENT_COUNT: RwLock<i32> = RwLock::new(0);
+use expr::Expr;
+use std::collections::HashMap;
+use type_::Type;
+
+mod normal_form;
+
+fn to_kazuma_params(_params: Vec<(String, Type)>) -> Vec<(String, kazuma::typ::Type)> {
+    unimplemented!()
+}
+fn to_kazuma_type(_ty: Type) -> kazuma::typ::Type {
+    unimplemented!()
+}
+fn to_kazuma_expr(_e: Expr) -> kazuma::program::Expr {
+    unimplemented!()
 }
 
-fn fresh_var() -> String {
-    let mut counter = FRESH_IDENT_COUNT.write().unwrap();
-    let ident = format!("<fresh{}>", *counter);
-    *counter += 1;
-    ident
-}
+fn to_kazuma_module(name: &str, nf: normal_form::NormalForm) -> kazuma::program::Module {
+    let mut funcs = vec![];
+    for let_ in nf.lets.into_iter() {
+        funcs.push(kazuma::program::Func {
+            name: let_.name,
+            args: to_kazuma_params(let_.params),
+            ret_type: to_kazuma_type(let_.ret_type),
+            body: vec![kazuma::program::Statement::Expr(to_kazuma_expr(let_.body))],
+        });
+    }
 
-fn make_name_unique(e: Expr) -> Expr {
-    match e {
-        Const(Number(_)) | Const(Bool(_)) | Const(Char(_)) | Const(Unit) => e,
-        Const(List(es)) => Const(List(es.into_iter().map(|e| make_name_unique(e)).collect())),
-        Const(Variant(label, box e, box ty)) => {
-            Const(Variant(label, box make_name_unique(e), box ty))
-        }
-        Const(Record(branches)) => Const(Record(
-            branches
-                .into_iter()
-                .map(|(label, box e)| (label, box make_name_unique(e)))
-                .collect(),
-        )),
-        Var(name) => Var(name),
-        Lambda(name, box ty, box e) => {
-            let fresh = fresh_var();
-            let e = make_name_unique(e.subst_expr(&name, &Var(fresh.clone())));
-            Lambda(fresh, box ty, box e)
-        }
-        Apply(box e1, box e2) => Apply(box make_name_unique(e1), box make_name_unique(e2)),
-        Let(name, box e1, box e2) => {
-            let e1 = make_name_unique(e1);
-            let fresh = fresh_var();
-            let e2 = make_name_unique(e2.subst_expr(&name, &Var(fresh.clone())));
-            Let(fresh, box e1, box e2)
-        }
-        LetRec(name, box ty, box e1, box e2) => {
-            let fresh = fresh_var();
-            let fresh_expr = Var(fresh.clone());
-            let e1 = make_name_unique(e1.subst_expr(&name, &fresh_expr));
-            let e2 = make_name_unique(e2.subst_expr(&name, &fresh_expr));
-            LetRec(fresh, box ty, box e1, box e2)
-        }
-        LetType(name, box ty, box e) => {
-            let fresh = fresh_var();
-            let e = make_name_unique(e.subst_expr(&name, &Var(fresh)));
-            LetType(name, box ty, box e)
-        }
-        If(box cond, box e1, box e2) => If(
-            box make_name_unique(cond),
-            box make_name_unique(e1),
-            box make_name_unique(e2),
-        ),
-        BinOp(op, box e1, box e2) => BinOp(op, box make_name_unique(e1), box make_name_unique(e2)),
-        Dot(box e, label) => Dot(box make_name_unique(e), label),
-        Match(box e, branches) => {
-            let e = make_name_unique(e);
-            let branches = branches
-                .into_iter()
-                .map(|(label, name, box e)| {
-                    let fresh = fresh_var();
-                    let e = make_name_unique(e.subst_expr(&name, &Var(fresh.clone())));
-                    (label, fresh, box e)
-                })
-                .collect();
-            Match(box e, branches)
-        }
-        Println(box e) => Println(box make_name_unique(e)),
+    funcs.push(kazuma::program::Func {
+        name: "main".to_string(),
+        args: vec![],
+        ret_type: kazuma::typ::Type::Int,
+        body: vec![
+            kazuma::program::Statement::PrintNum(to_kazuma_expr(nf.expr)),
+            kazuma::program::Statement::Return(kazuma::program::Expr::Literal(
+                kazuma::program::Literal::Int(0),
+            )),
+        ],
+    });
+
+    kazuma::program::Module {
+        name: name.to_string(),
+        struct_types: vec![],
+        global_var: HashMap::new(),
+        funcs: funcs,
     }
 }
 
-fn lift(e: Expr) -> (Vec<program::Func>, Vec<program::Statement>) {
-    fn lift_impl(
-        e: Expr,
-        acc: (Vec<program::Func>, Vec<program::Statement>),
-    ) -> (Vec<program::Func>, Vec<program::Statement>) {
-        match e {
-            Const(Number(_)) | Const(Bool(_)) | Const(Char(_)) | Const(Unit) => acc,
-            _ => unimplemented!(),
-        }
-    }
-    lift_impl(e, (vec![], vec![]))
-}
+pub fn codegen(e: Expr, name: &str) {
+    let e = e.make_name_unique();
+    let normal_form = normal_form::NormalForm::from(e);
+    let module = to_kazuma_module(name, normal_form);
 
-pub fn codegen(e: Expr) {
-    let e = make_name_unique(e);
-    let funcs = lift(e);
+    // write llvm-ir
+    use std::fs;
+    use std::io::Write;
+    let mut f = fs::File::create(name).unwrap();
+    match kazuma::generate(module) {
+        Ok(code) => write!(f, "{}", code).unwrap(),
+        Err(err) => panic!("{}", err),
+    }
 }

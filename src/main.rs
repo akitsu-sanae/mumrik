@@ -61,6 +61,7 @@ fn exec(src: &str) {
             let ty = type_::check(&expr, &Context::new()).expect("type error");
             let value = eval::expr(&expr, &Context::new()).expect("invalid operation");
             println!("{}: {}", value, ty);
+            codegen::codegen(expr, "output.ll");
         }
         Err(err) => {
             let lines: Vec<_> = src.split('\n').collect();
