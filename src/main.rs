@@ -17,7 +17,6 @@ mod type_;
 #[cfg(test)]
 mod tests;
 
-use context::Context;
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -58,9 +57,9 @@ impl fmt::Display for Expected {
 fn exec(src: &str) {
     match parser::expr(src) {
         Ok(expr) => {
-            let ty = type_::check(&expr, &Context::new()).expect("type error");
-            let value = eval::expr(&expr, &Context::new()).expect("invalid operation");
-            println!("{}: {}", value, ty);
+            // let ty = type_::check(&expr, &Context::new()).expect("type error");
+            // let value = eval::expr(&expr, &Context::new()).expect("invalid operation");
+            // println!("{}: {}", value, ty);
             codegen::codegen(expr, "output.ll");
         }
         Err(err) => {
