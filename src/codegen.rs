@@ -1,44 +1,138 @@
 use expr;
-use std::collections::HashMap;
-use type_::Type;
 
-mod normal_form;
-
-fn to_kazuma_params(params: Vec<(String, Type)>) -> Vec<(String, kazuma::typ::Type)> {
-    params
-        .into_iter()
-        .map(|(name, ty)| (name, to_kazuma_type(ty)))
-        .collect()
-}
-fn to_kazuma_type(ty: Type) -> kazuma::typ::Type {
-    match ty {
-        Type::Int => kazuma::typ::Type::Int,
-        Type::Bool => kazuma::typ::Type::Bool,
-        Type::Char => kazuma::typ::Type::Char,
-        Type::Unit => kazuma::typ::Type::Void,
-        Type::Function(box ty1, box ty2) => {
-            kazuma::typ::Type::Func(vec![to_kazuma_type(ty1)], box to_kazuma_type(ty2))
-        }
-        _ => unreachable!(),
+fn subst_expr_lit(lit: nf::Literal, name: &str, e: &nf::Expr) -> nf::Literal {
+    match lit {
+        nf::Literal::Bool(_) | nf::Literal::Char(_) | nf::Literal::Int(_) => lit,
+        nf::Literal::Array(es, box ty) => nf::Literal::Array(
+            es.into_iter().map(|e_| subst_expr(e_, name, e)).collect(),
+            box ty,
+        ),
+        nf::Literal::Struct(fields) => nf::Literal::Struct(
+            fields
+                .into_iter()
+                .map(|(label, e_)| (label, subst_expr(e_, name, e)))
+                .collect(),
+        ),
     }
 }
 
-fn to_kazuma_literal(l: expr::Literal) -> kazuma::program::Literal {
+fn subst_expr(e_: nf::Expr, name: &str, e: &nf::Expr) -> nf::Expr {
+    match e_ {
+        nf::Expr::Const(lit) => nf::Expr::Const(subst_expr_lit(lit, name, e)),
+        nf::Expr::Var(name_) if name_ == nf::Ident::new(name) => e.clone(),
+        nf::Expr::Var(_) => e_,
+        nf::Expr::Call(box f, args) => nf::Expr::Call(
+            box subst_expr(f, name, e),
+            args.into_iter()
+                .map(|arg| subst_expr(arg, name, e))
+                .collect(),
+        ),
+        nf::Expr::If(box cond, box e1, box e2) => nf::Expr::If(
+            box subst_expr(cond, name, e),
+            box subst_expr(e1, name, e),
+            box subst_expr(e2, name, e),
+        ),
+        nf::Expr::BinOp(op, box e1, box e2) => {
+            nf::Expr::BinOp(op, box subst_expr(e1, name, e), box subst_expr(e2, name, e))
+        }
+        _ => unimplemented!(),
+    }
+}
+
+fn to_nf(e: expr::Expr) -> nf::Nf {
+    match e {
+        expr::Expr::Const(lit) => nf::Nf {
+            funcs: vec![],
+            body: nf::Expr::Const(to_nf_literal(lit)),
+        },
+        expr::Expr::Var(name) => nf::Nf {
+            funcs: vec![],
+            body: nf::Expr::Var(nf::Ident::new(&name)),
+        },
+        expr::Expr::Lambda(_, _, _) => unimplemented!(),
+        expr::Expr::Apply(box e1, box e2) => {
+            let mut nf1 = to_nf(e1);
+            let mut nf2 = to_nf(e2);
+            nf1.funcs.append(&mut nf2.funcs);
+            nf::Nf {
+                funcs: nf1.funcs,
+                body: nf::Expr::Call(box nf1.body, vec![nf2.body]),
+            }
+        }
+        expr::Expr::Let(name, box e1, box e2) => {
+            let free_vars: Vec<_> = e1
+                .free_vars()
+                .into_iter()
+                .map(|var| (nf::Ident::new(&var), nf::Type::Int) /* TODO */)
+                .collect();
+            let mut funcs = vec![];
+            let mut nf1 = to_nf(e1);
+            let mut nf2 = to_nf(e2);
+            funcs.append(&mut nf1.funcs);
+            funcs.append(&mut nf2.funcs);
+            funcs.push(nf::Func {
+                name: nf::Ident::new(&name),
+                params: free_vars.clone(),
+                ret_type: nf::Type::Int, // TODO
+                body: nf1.body,
+            });
+            let e = subst_expr(
+                nf2.body,
+                &name,
+                &nf::Expr::Call(
+                    box nf::Expr::Var(nf::Ident::new(&name)),
+                    free_vars.into_iter().map(|v| nf::Expr::Var(v.0)).collect(),
+                ),
+            );
+            nf::Nf {
+                funcs: funcs,
+                body: e,
+            }
+        }
+        expr::Expr::LetRec(_, _, _, _) => unimplemented!(),
+        expr::Expr::LetType(_, _, _) => unimplemented!(),
+        expr::Expr::If(box cond, box e1, box e2) => {
+            let nf_cond = to_nf(cond);
+            let mut nf1 = to_nf(e1);
+            let mut nf2 = to_nf(e2);
+            let mut funcs = nf_cond.funcs;
+            funcs.append(&mut nf1.funcs);
+            funcs.append(&mut nf2.funcs);
+            nf::Nf {
+                funcs: funcs,
+                body: nf::Expr::If(box nf_cond.body, box nf1.body, box nf2.body),
+            }
+        }
+        expr::Expr::BinOp(op, box e1, box e2) => {
+            let nf1 = to_nf(e1);
+            let mut nf2 = to_nf(e2);
+            let mut funcs = nf1.funcs;
+            funcs.append(&mut nf2.funcs);
+            nf::Nf {
+                funcs: funcs,
+                body: nf::Expr::BinOp(to_nf_binop(op), box nf1.body, box nf2.body),
+            }
+        }
+        _ => unimplemented!(),
+    }
+}
+
+fn to_nf_literal(l: expr::Literal) -> nf::Literal {
     use expr::Literal::*;
     match l {
-        Number(n) => kazuma::program::Literal::Int(n),
-        Bool(b) => kazuma::program::Literal::Bool(b),
-        Char(c) => kazuma::program::Literal::Char(c),
-        Unit => kazuma::program::Literal::Int(0), // dummy
+        Number(n) => nf::Literal::Int(n),
+        Bool(b) => nf::Literal::Bool(b),
+        Char(c) => nf::Literal::Char(c),
+        Unit => nf::Literal::Int(0), // dummy
         List(_) => unimplemented!(),
         Variant(_, _, _) => unimplemented!(),
         Record(_) => unimplemented!(),
     }
 }
 
-fn to_kazuma_binop(op: expr::BinOp) -> kazuma::program::BinOp {
+fn to_nf_binop(op: expr::BinOp) -> nf::BinOp {
     use expr::BinOp::*;
-    use kazuma::program::BinOp;
+    use nf::BinOp;
     match op {
         Add => BinOp::Add,
         Sub => BinOp::Sub,
@@ -51,71 +145,15 @@ fn to_kazuma_binop(op: expr::BinOp) -> kazuma::program::BinOp {
     }
 }
 
-fn to_kazuma_expr(e: normal_form::Nexpr) -> kazuma::program::Expr {
-    use codegen::normal_form::Nexpr::*;
-    use kazuma::program::Expr;
-    match e {
-        Const(lit) => Expr::Literal(to_kazuma_literal(lit)),
-        Var(name) => Expr::Var(name),
-        Apply(box e1, args) => Expr::Call(
-            box to_kazuma_expr(e1),
-            args.into_iter().map(to_kazuma_expr).collect(),
-        ),
-        If(box cond, box e1, box e2) => Expr::If(
-            box to_kazuma_expr(cond),
-            box to_kazuma_expr(e1),
-            box to_kazuma_expr(e2),
-        ),
-        BinOp(op, box e1, box e2) => Expr::BinOp(
-            to_kazuma_binop(op),
-            box to_kazuma_expr(e1),
-            box to_kazuma_expr(e2),
-        ),
-    }
-}
-
-fn to_kazuma_module(name: &str, nf: normal_form::NormalForm) -> kazuma::program::Module {
-    let mut funcs = vec![];
-    for func in nf.funcs.into_iter() {
-        funcs.push(kazuma::program::Func {
-            name: func.name,
-            args: to_kazuma_params(func.params),
-            ret_type: to_kazuma_type(func.ret_type),
-            body: vec![kazuma::program::Statement::Expr(to_kazuma_expr(func.body))],
-        });
-    }
-
-    funcs.push(kazuma::program::Func {
-        name: "main".to_string(),
-        args: vec![],
-        ret_type: kazuma::typ::Type::Int,
-        body: vec![
-            kazuma::program::Statement::PrintNum(to_kazuma_expr(nf.expr)),
-            kazuma::program::Statement::Return(kazuma::program::Expr::Literal(
-                kazuma::program::Literal::Int(0),
-            )),
-        ],
-    });
-
-    kazuma::program::Module {
-        name: name.to_string(),
-        struct_types: vec![],
-        global_var: HashMap::new(),
-        funcs: funcs,
-    }
-}
-
 pub fn codegen(e: expr::Expr, name: &str) {
     let e = e.make_name_unique();
-    let normal_form = normal_form::NormalForm::from(e);
-    let module = to_kazuma_module(name, normal_form);
+    let nf = to_nf(e);
 
     // write llvm-ir
     use std::fs;
-    use std::io::Write;
     let mut f = fs::File::create(name).unwrap();
-    match kazuma::generate(module) {
-        Ok(code) => write!(f, "{}", code).unwrap(),
+    match nf.codegen(name, &mut f) {
+        Ok(()) => (),
         Err(err) => panic!("{}", err),
     }
 }

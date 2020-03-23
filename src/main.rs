@@ -4,7 +4,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-extern crate kazuma;
+extern crate nf2llvmir as nf;
 extern crate peg;
 
 mod codegen;
