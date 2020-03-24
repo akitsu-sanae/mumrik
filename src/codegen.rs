@@ -113,6 +113,13 @@ fn to_nf(e: expr::Expr) -> nf::Nf {
                 body: nf::Expr::BinOp(to_nf_binop(op), box nf1.body, box nf2.body),
             }
         }
+        expr::Expr::Println(box e) => {
+            let nf = to_nf(e);
+            nf::Nf {
+                funcs: nf.funcs,
+                body: nf::Expr::PrintNum(box nf.body),
+            }
+        }
         _ => unimplemented!(),
     }
 }
