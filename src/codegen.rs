@@ -35,6 +35,9 @@ fn subst_expr(e_: nf::Expr, name: &str, e: &nf::Expr) -> nf::Expr {
         nf::Expr::BinOp(op, box e1, box e2) => {
             nf::Expr::BinOp(op, box subst_expr(e1, name, e), box subst_expr(e2, name, e))
         }
+        nf::Expr::Then(box e1, box e2) => {
+            nf::Expr::Then(box subst_expr(e1, name, e), box subst_expr(e2, name, e))
+        }
         _ => unimplemented!(),
     }
 }
@@ -76,8 +79,9 @@ fn to_nf(e: expr::Expr) -> nf::Nf {
                 ret_type: nf::Type::Int, // TODO
                 body: nf1.body,
             });
+            let body = nf::Expr::Then(box nf::Expr::Var(nf::Ident::new(&name)), box nf2.body);
             let e = subst_expr(
-                nf2.body,
+                body,
                 &name,
                 &nf::Expr::Call(
                     box nf::Expr::Var(nf::Ident::new(&name)),

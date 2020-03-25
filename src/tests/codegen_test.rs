@@ -1,10 +1,8 @@
 use codegen::codegen;
 use expr::{
-    BinOp,
     Expr::{self, *},
     Literal::*,
 };
-use type_::Type;
 
 fn check(e: Expr, expected: &str, filename: &str) {
     let filename = format!("./test/{}", filename);
