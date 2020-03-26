@@ -28,6 +28,22 @@ fn check(e: Expr, expected: &str, filename: &str) {
 }
 
 #[test]
+fn const_() {
+    let e = Const(Number(42));
+    check(e, "42\n", "const.ll");
+}
+
+#[test]
+fn let_() {
+    let e = Let(
+        "a".to_string(),
+        box Const(Number(42)),
+        box Var("a".to_string()),
+    );
+    check(e, "42\n", "let.ll");
+}
+
+#[test]
 fn if_() {
     let e = If(
         box Const(Bool(true)),

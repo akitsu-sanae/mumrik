@@ -35,10 +35,16 @@ fn subst_expr(e_: nf::Expr, name: &str, e: &nf::Expr) -> nf::Expr {
         nf::Expr::BinOp(op, box e1, box e2) => {
             nf::Expr::BinOp(op, box subst_expr(e1, name, e), box subst_expr(e2, name, e))
         }
+        nf::Expr::ArrayAt(box arr, box idx) => {
+            nf::Expr::ArrayAt(box subst_expr(arr, name, e), box subst_expr(idx, name, e))
+        }
+        nf::Expr::StructAt(box strct, label) => {
+            nf::Expr::StructAt(box subst_expr(strct, name, e), label)
+        }
+        nf::Expr::PrintNum(box e_) => nf::Expr::PrintNum(box subst_expr(e_, name, e)),
         nf::Expr::Then(box e1, box e2) => {
             nf::Expr::Then(box subst_expr(e1, name, e), box subst_expr(e2, name, e))
         }
-        _ => unimplemented!(),
     }
 }
 
