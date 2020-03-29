@@ -1,29 +1,26 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-#[macro_use]
-extern crate lazy_static;
-
 extern crate nf2llvmir as nf;
 extern crate peg;
 
-mod codegen;
-mod context;
-mod eval;
-mod expr;
+mod ast;
+mod typecheck;
+// mod codegen;
+mod env;
+// mod eval;
+mod ident;
 mod parser;
-mod type_;
 
 #[cfg(test)]
 mod tests;
 
-use std::env;
 use std::fs::File;
 use std::io::Read;
 
 fn main() {
     let mut src = String::new();
-    let filename = env::args().nth(1).expect("filename is required");
+    let filename = std::env::args().nth(1).expect("filename is required");
     let f = File::open(filename.clone()).and_then(|mut f| f.read_to_string(&mut src));
     if f.is_ok() {
         exec(&src)
@@ -55,12 +52,12 @@ impl fmt::Display for Expected {
 }
 
 fn exec(src: &str) {
-    match parser::expr(src) {
-        Ok(expr) => {
-            // let ty = type_::check(&expr, &Context::new()).expect("type error");
-            // let value = eval::expr(&expr, &Context::new()).expect("invalid operation");
+    match parser::program(src) {
+        Ok(program) => {
+            let expr = typecheck::check_program(&program).expect("type error");
+            // let value = eval::expr(expr);
             // println!("{}: {}", value, ty);
-            codegen::codegen(expr, "output.ll");
+            // codegen::codegen(expr, "output.ll");
         }
         Err(err) => {
             let lines: Vec<_> = src.split('\n').collect();
