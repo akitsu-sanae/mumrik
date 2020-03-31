@@ -12,7 +12,7 @@ pub enum Expr {
     Lambda(Ident, Type, Box<Expr>),
     Apply(Box<Expr>, Box<Expr>),
     LetRec(Ident, Type, Box<Expr>, Box<Expr>),
-    Let(Ident, Type, Box<Expr>, Box<Expr>),
+    Let(Ident, Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     BinOp(BinOp, Box<Expr>, Box<Expr>),
     FieldAccess(Box<Expr>, Ident),

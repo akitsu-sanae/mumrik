@@ -25,9 +25,8 @@ fn subst_type_expr(e: Expr, name: &Ident, typ: &Type) -> Expr {
             box subst_type_expr(e1, name, typ),
             box subst_type_expr(e2, name, typ),
         ),
-        Expr::Let(name_, type_, box e1, box e2) => Expr::Let(
+        Expr::Let(name_, box e1, box e2) => Expr::Let(
             name_,
-            subst_type_type(type_, name, typ),
             box subst_type_expr(e1, name, typ),
             box subst_type_expr(e2, name, typ),
         ),
