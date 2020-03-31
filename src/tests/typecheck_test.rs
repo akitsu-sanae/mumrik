@@ -1,5 +1,7 @@
+use ast::parsed::Position;
 use ast::{parsed, typed, BinOp};
 use env::Env;
+use ident::Ident;
 use typecheck::*;
 
 #[test]
@@ -7,57 +9,145 @@ fn primitive_literal() {
     let env = Env::new();
     assert_eq!(
         check_lit(
-            &parsed::Literal::Number(42, parsed::Position { start: 0, end: 0 }),
+            &parsed::Literal::Number(42, Position { start: 0, end: 0 }),
             &env
         ),
         Ok(typed::Literal::Number(42))
     );
-    /*
-    assert_eq!(type_::check(&Const(Number(42)), &context), Ok(Type::Int));
-    assert_eq!(type_::check(&Const(Bool(true)), &context), Ok(Type::Bool));
-    assert_eq!(type_::check(&Const(Char('c')), &context), Ok(Type::Char));
-    assert_eq!(type_::check(&Const(Unit), &context), Ok(Type::Unit));
-
-    let context = context.add(&"a".to_string(), &Type::Int);
-    assert_eq!(type_::check(&Var("a".to_string()), &context), Ok(Type::Int)); */
+    assert_eq!(
+        check_lit(
+            &parsed::Literal::Bool(true, Position { start: 0, end: 0 }),
+            &env
+        ),
+        Ok(typed::Literal::Bool(true))
+    );
+    assert_eq!(
+        check_lit(
+            &parsed::Literal::Char('c', Position { start: 0, end: 0 }),
+            &env
+        ),
+        Ok(typed::Literal::Char('c'))
+    );
+    assert_eq!(
+        check_lit(&parsed::Literal::Unit(Position { start: 0, end: 0 }), &env),
+        Ok(typed::Literal::Unit)
+    );
 }
 
-/*
 #[test]
 fn apply() {
-    let e = Apply(
-        box Lambda("x".to_string(), box Type::Int, box Var("x".to_string())),
-        box Const(Number(1)),
+    use ast::parsed::{Expr::*, Literal::*};
+    let env = Env::new().add(
+        Ident::new("a"),
+        typed::Type::Func(box typed::Type::Int, box typed::Type::Unit),
     );
-    assert_eq!(type_::check(&e, &Context::new()), Ok(Type::Int));
+    assert_eq!(
+        check_expr(
+            &Apply(
+                box Var(Ident::new("a"), Position { start: 0, end: 0 }),
+                box Const(Number(1, Position { start: 0, end: 0 }))
+            ),
+            &env
+        ),
+        Ok(typed::Expr::Apply(
+            box typed::Expr::Var(
+                Ident::new("a"),
+                typed::Type::Func(box typed::Type::Int, box typed::Type::Unit)
+            ),
+            box typed::Expr::Const(typed::Literal::Number(1))
+        ))
+    );
 }
 
 #[test]
 fn if_() {
-    let e = If(
-        box Const(Bool(true)),
-        box Const(Number(1)),
-        box Const(Number(2)),
+    use ast::parsed::{Expr::*, Literal::*};
+    let env = Env::new();
+    assert_eq!(
+        check_expr(
+            &If(
+                box Const(Bool(true, Position { start: 0, end: 0 })),
+                box Const(Number(1, Position { start: 0, end: 0 })),
+                box Const(Number(2, Position { start: 0, end: 0 })),
+                Position { start: 0, end: 0 }
+            ),
+            &env
+        ),
+        Ok(typed::Expr::If(
+            box typed::Expr::Const(typed::Literal::Bool(true)),
+            box typed::Expr::Const(typed::Literal::Number(1)),
+            box typed::Expr::Const(typed::Literal::Number(2))
+        ))
     );
-    assert_eq!(type_::check(&e, &Context::new()), Ok(Type::Int));
 }
 
 #[test]
 fn arithmetic() {
-    let e = BinOp(
-        BinOp::Add,
-        box BinOp(
-            BinOp::Add,
-            box Const(Number(1)),
-            box BinOp(BinOp::Mult, box Const(Number(2)), box Const(Number(5))),
+    let env = Env::new();
+    assert_eq!(
+        check_expr(
+            &parsed::Expr::BinOp(
+                BinOp::Add,
+                box parsed::Expr::BinOp(
+                    BinOp::Add,
+                    box parsed::Expr::Const(parsed::Literal::Number(
+                        1,
+                        Position { start: 0, end: 0 }
+                    )),
+                    box parsed::Expr::BinOp(
+                        BinOp::Mult,
+                        box parsed::Expr::Const(parsed::Literal::Number(
+                            2,
+                            Position { start: 0, end: 0 }
+                        )),
+                        box parsed::Expr::Const(parsed::Literal::Number(
+                            5,
+                            Position { start: 0, end: 0 }
+                        ))
+                    )
+                ),
+                box parsed::Expr::Const(parsed::Literal::Number(6, Position { start: 0, end: 0 }))
+            ),
+            &env
         ),
-        box Const(Number(6)),
+        Ok(typed::Expr::BinOp(
+            BinOp::Add,
+            box typed::Expr::BinOp(
+                BinOp::Add,
+                box typed::Expr::Const(typed::Literal::Number(1)),
+                box typed::Expr::BinOp(
+                    BinOp::Mult,
+                    box typed::Expr::Const(typed::Literal::Number(2)),
+                    box typed::Expr::Const(typed::Literal::Number(5))
+                )
+            ),
+            box typed::Expr::Const(typed::Literal::Number(6))
+        ))
     );
-    assert_eq!(type_::check(&e, &Context::new()), Ok(Type::Int));
 }
 
 #[test]
-fn let_type_func() {
-    let e = LetType("a".to_string(), box Type::Int, box Const(Number(42)));
-    assert_eq!(type_::check(&e, &Context::new()), Ok(Type::Int));
-} */
+fn let_type() {
+    let env = Env::new();
+    assert_eq!(
+        check_expr(
+            &parsed::Expr::LetType(
+                Ident::new("i"),
+                parsed::Type::Int(Position { start: 0, end: 0 }),
+                box parsed::Expr::Lambda(
+                    Ident::new("a"),
+                    parsed::Type::Var(Ident::new("i"), Position { start: 0, end: 0 }),
+                    box parsed::Expr::Var(Ident::new("a"), Position { start: 0, end: 0 }),
+                    Position { start: 0, end: 0 }
+                ),
+                Position { start: 0, end: 0 }
+            ),
+            &env
+        ),
+        Ok(typed::Expr::Lambda(
+            Ident::new("a"),
+            typed::Type::Int,
+            box typed::Expr::Var(Ident::new("a"), typed::Type::Int)
+        ))
+    );
+}

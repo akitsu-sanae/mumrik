@@ -71,6 +71,26 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
             let e2 = check_expr(e2, env)?;
             Ok(typed::Expr::Apply(box e1, box e2))
         }
+        parsed::Expr::Let(name, box ref e1, box ref e2, _) => {
+            let e1 = check_expr(e1, env)?;
+            let env = env.add(name.clone(), typed::type_of(&e1));
+            let e2 = check_expr(e2, &env)?;
+            Ok(typed::Expr::Let(name.clone(), box e1, box e2))
+        }
+        parsed::Expr::LetType(ref name, ref typ, box ref e, _) => {
+            todo!()
+            // check_expr(e.subst_type(name, typ), env)
+        }
+        parsed::Expr::If(box cond, box e1, box e2, _) => Ok(typed::Expr::If(
+            box check_expr(cond, env)?,
+            box check_expr(e1, env)?,
+            box check_expr(e2, env)?,
+        )),
+        parsed::Expr::BinOp(op, box e1, box e2) => Ok(typed::Expr::BinOp(
+            *op,
+            box check_expr(e1, env)?,
+            box check_expr(e2, env)?,
+        )),
         _ => todo!(),
     }
 }
@@ -80,6 +100,7 @@ pub fn check_lit(lit: &parsed::Literal, env: &Env<typed::Type>) -> Result<typed:
         parsed::Literal::Number(n, _) => Ok(typed::Literal::Number(*n)),
         parsed::Literal::Bool(b, _) => Ok(typed::Literal::Bool(*b)),
         parsed::Literal::Char(c, _) => Ok(typed::Literal::Char(*c)),
+        parsed::Literal::Unit(_) => Ok(typed::Literal::Unit),
         _ => todo!(),
     }
 }
