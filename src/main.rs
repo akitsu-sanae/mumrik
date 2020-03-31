@@ -59,12 +59,17 @@ fn exec(src: &str) {
                 println!("{:?}", value);
                 // codegen::codegen(expr, "output.ll");
             }
-            Err(err) => {
-                println!(
-                    "at {:?}, expected is {:?} but actual is {:?}",
-                    err.pos, err.expected, err.actual
-                );
-            }
+            Err(err) => match err {
+                typecheck::Error::UnmatchType(err) => {
+                    println!(
+                        "at {:?}, expected is {:?} but actual is {:?}",
+                        err.pos, err.expected, err.actual
+                    );
+                }
+                typecheck::Error::UnboundVariable(err) => {
+                    println!("at {:?}, unbound variable {:?}", err.pos, err.name);
+                }
+            },
         },
         Err(err) => {
             let lines: Vec<_> = src.split('\n').collect();

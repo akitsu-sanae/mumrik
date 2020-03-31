@@ -6,10 +6,22 @@ use env::Env;
 use ident::Ident;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Error {
+pub enum Error {
+    UnmatchType(UnmatchTypeError),
+    UnboundVariable(UnboundVariableError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnmatchTypeError {
     pub pos: Position,
     pub expected: parsed::Type,
     pub actual: parsed::Type,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnboundVariableError {
+    pub pos: Position,
+    pub name: Ident,
 }
 
 pub fn check_program(program: &parsed::Program) -> Result<typed::Expr, Error> {
@@ -35,6 +47,30 @@ pub fn check_func(func: &parsed::Func) -> Result<(Ident, typed::Expr, typed::Typ
 pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Expr, Error> {
     match e {
         parsed::Expr::Const(lit) => Ok(typed::Expr::Const(check_lit(lit, env)?)),
+        parsed::Expr::Var(name, pos) => Ok(typed::Expr::Var(
+            name.clone(),
+            env.lookup(name).map_err(|_| {
+                Error::UnboundVariable(UnboundVariableError {
+                    pos: pos.clone(),
+                    name: name.clone(),
+                })
+            })?,
+        )),
+        parsed::Expr::Lambda(param_name, param_type, box body, _) => {
+            let param_type = typed::Type::from_parsed_type(param_type);
+            let env = env.add(param_name.clone(), param_type.clone());
+            let body = check_expr(body, &env)?;
+            Ok(typed::Expr::Lambda(
+                param_name.clone(),
+                param_type,
+                box body,
+            ))
+        }
+        parsed::Expr::Apply(box ref e1, box ref e2) => {
+            let e1 = check_expr(e1, env)?;
+            let e2 = check_expr(e2, env)?;
+            Ok(typed::Expr::Apply(box e1, box e2))
+        }
         _ => todo!(),
     }
 }

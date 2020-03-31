@@ -1,11 +1,15 @@
 use super::BinOp;
 use ident::Ident;
 
+mod subst_type;
+mod util;
+pub use self::util::type_of;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Literal),
     Var(Ident, Type),
-    Lambda(Ident, Type, Type, Box<Expr>),
+    Lambda(Ident, Type, Box<Expr>),
     Apply(Box<Expr>, Box<Expr>),
     LetRec(Ident, Type, Box<Expr>, Box<Expr>),
     Let(Ident, Type, Box<Expr>, Box<Expr>),
