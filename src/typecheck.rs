@@ -78,8 +78,8 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
             Ok(typed::Expr::Let(name.clone(), box e1, box e2))
         }
         parsed::Expr::LetType(ref name, ref typ, box ref e, _) => {
-            todo!()
-            // check_expr(e.subst_type(name, typ), env)
+            let e = e.subst_type(name, typ);
+            check_expr(&e, env)
         }
         parsed::Expr::If(box cond, box e1, box e2, _) => Ok(typed::Expr::If(
             box check_expr(cond, env)?,

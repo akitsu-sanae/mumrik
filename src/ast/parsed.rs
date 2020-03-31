@@ -1,6 +1,8 @@
 use super::BinOp;
 use ident::Ident;
 
+mod subst_type;
+
 pub type Program = (Vec<ToplevelExpr>, Expr);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

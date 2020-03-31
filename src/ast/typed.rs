@@ -1,7 +1,6 @@
 use super::BinOp;
 use ident::Ident;
 
-mod subst_type;
 mod util;
 pub use self::util::type_of;
 
