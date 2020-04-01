@@ -51,7 +51,50 @@ fn type_of_expr(e: &Expr, env: &Env<Type>) -> Type {
                 unreachable!()
             }
         }
-        _ => todo!(),
+        Expr::LetRec(ref name, ref typ, _, box ref e) => {
+            let env = env.add(name.clone(), typ.clone());
+            type_of_expr(e, &env)
+        }
+        Expr::Let(ref name, box ref e1, box ref e2) => {
+            let typ = type_of_expr(e1, env);
+            let env = env.add(name.clone(), typ.clone());
+            type_of_expr(e2, &env)
+        }
+        Expr::If(_, box ref e, _) => type_of_expr(e, env),
+        Expr::BinOp(op, box ref e1, box ref e2) => {
+            let (typ1, typ2) = (type_of_expr(e1, env), type_of_expr(e2, env));
+            match (op, typ1, typ2) {
+                (BinOp::Add, Type::Int, Type::Int)
+                | (BinOp::Sub, Type::Int, Type::Int)
+                | (BinOp::Mult, Type::Int, Type::Int)
+                | (BinOp::Div, Type::Int, Type::Int) => Type::Int,
+                (BinOp::Lt, Type::Int, Type::Int) | (BinOp::Gt, Type::Int, Type::Int) => Type::Bool,
+                (BinOp::Eq, typ1, typ2) | (BinOp::Neq, typ1, typ2) if &typ1 == &typ2 => typ1,
+                _ => unreachable!(),
+            }
+        }
+        Expr::FieldAccess(box ref e, ref label) => {
+            if let Type::Record(fields) = type_of_expr(e, env) {
+                fields
+                    .into_iter()
+                    .find(|&(ref label_, _)| label == label_)
+                    .unwrap()
+                    .1
+            } else {
+                unreachable!()
+            }
+        }
+        Expr::PatternMatch(box ref e, ref arms) => {
+            if let Type::Variant(ctors) = type_of_expr(e, env) {
+                let (ref label, ref typ) = ctors[0];
+                let arm = arms.iter().find(|ref arm| &arm.label == label).unwrap();
+                let env = env.add(arm.name.clone(), typ.clone());
+                type_of_expr(&arm.body, &env)
+            } else {
+                unreachable!()
+            }
+        }
+        Expr::Println(_) => Type::Unit,
     }
 }
 

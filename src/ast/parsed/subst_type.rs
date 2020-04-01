@@ -78,7 +78,25 @@ fn subst_type_literal(lit: &Literal, name: &Ident, typ: &Type) -> Literal {
         Literal::Number(_, _) | Literal::Bool(_, _) | Literal::Char(_, _) | Literal::Unit(_) => {
             lit.clone()
         }
-        _ => todo!(),
+        Literal::Variant(label, box e, typ_, pos) => Literal::Variant(
+            label.clone(),
+            box subst_type_expr(e, name, typ),
+            subst_type_type(typ_, name, typ),
+            pos.clone(),
+        ),
+        Literal::Record(fields, pos) => Literal::Record(
+            fields
+                .iter()
+                .map(|&(ref label, ref e)| (label.clone(), subst_type_expr(e, name, typ)))
+                .collect(),
+            pos.clone(),
+        ),
+        Literal::Tuple(es, pos) => Literal::Tuple(
+            es.iter()
+                .map(|ref e| subst_type_expr(e, name, typ))
+                .collect(),
+            pos.clone(),
+        ),
     }
 }
 
@@ -93,6 +111,19 @@ fn subst_type_type(typ_: &Type, name: &Ident, typ: &Type) -> Type {
             box subst_type_type(typ2, name, typ),
             pos.clone(),
         ),
-        _ => todo!(),
+        Type::Record(ref fields, ref pos) => Type::Record(
+            fields
+                .iter()
+                .map(|(label, typ_)| (label.clone(), subst_type_type(typ_, name, typ)))
+                .collect(),
+            pos.clone(),
+        ),
+        Type::Variant(ref ctors, ref pos) => Type::Variant(
+            ctors
+                .iter()
+                .map(|(label, typ_)| (label.clone(), subst_type_type(typ_, name, typ)))
+                .collect(),
+            pos.clone(),
+        ),
     }
 }
