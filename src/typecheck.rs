@@ -156,7 +156,6 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
             Ok(typed::Expr::PatternMatch(box e, arms?))
         }
         parsed::Expr::Println(box ref e, _) => Ok(typed::Expr::Println(box check_expr(e, env)?)),
-        _ => todo!(),
     }
 }
 
