@@ -165,6 +165,27 @@ pub fn check_lit(lit: &parsed::Literal, env: &Env<typed::Type>) -> Result<typed:
         parsed::Literal::Bool(b, _) => Ok(typed::Literal::Bool(*b)),
         parsed::Literal::Char(c, _) => Ok(typed::Literal::Char(*c)),
         parsed::Literal::Unit(_) => Ok(typed::Literal::Unit),
-        _ => todo!(),
+
+        parsed::Literal::Variant(ref label, box ref e, ref typ, _) => Ok(typed::Literal::Variant(
+            label.clone(),
+            box check_expr(e, env)?,
+            typed::Type::from_parsed_type(typ),
+        )),
+        parsed::Literal::Record(ref fields, _) => {
+            let fields: Result<_, _> = fields
+                .iter()
+                .map(|(ref label, ref e)| Ok((label.clone(), check_expr(e, env)?)))
+                .collect();
+            let fields = fields?;
+            Ok(typed::Literal::Record(fields))
+        }
+        parsed::Literal::Tuple(ref es, _) => {
+            let fields: Result<_, _> = es
+                .iter()
+                .enumerate()
+                .map(|(n, ref e)| Ok((Ident::new(&n.to_string()), check_expr(e, env)?)))
+                .collect();
+            Ok(typed::Literal::Record(fields?))
+        }
     }
 }
