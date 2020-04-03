@@ -29,7 +29,7 @@ pub fn check_program(program: &parsed::Program) -> Result<typed::Expr, Error> {
     let mut toplevel_funcs = vec![];
     for toplevel_expr in program.0.iter() {
         match toplevel_expr {
-            parsed::ToplevelExpr::Func(func, _) => {
+            parsed::ToplevelExpr::Func(func) => {
                 let (name, expr, typ) = check_func(func)?;
                 env = env.add(name.clone(), typ);
                 toplevel_funcs.push((name, expr));
@@ -56,7 +56,7 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
                 })
             })?,
         )),
-        parsed::Expr::Lambda(ref param_name, ref param_type, box ref body, _) => {
+        parsed::Expr::Lambda(ref param_name, ref param_type, box ref body) => {
             let param_type = typed::Type::from_parsed_type(param_type);
             let env = env.add(param_name.clone(), param_type.clone());
             let body = check_expr(body, &env)?;
@@ -66,7 +66,7 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
                 box body,
             ))
         }
-        parsed::Expr::Apply(box ref e1, box ref e2) => {
+        parsed::Expr::Apply(box ref e1, box ref e2, _) => {
             let e1 = check_expr(e1, env)?;
             let e2 = check_expr(e2, env)?;
             let t1 = typed::type_of(&e1);
@@ -92,13 +92,13 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
                 })) */
             }
         }
-        parsed::Expr::Let(ref name, box ref e1, box ref e2, _) => {
+        parsed::Expr::Let(ref name, box ref e1, box ref e2) => {
             let e1 = check_expr(e1, env)?;
             let env = env.add(name.clone(), typed::type_of(&e1));
             let e2 = check_expr(e2, &env)?;
             Ok(typed::Expr::Let(name.clone(), box e1, box e2))
         }
-        parsed::Expr::LetType(ref name, ref typ, box ref e, _) => {
+        parsed::Expr::LetType(ref name, ref typ, box ref e) => {
             let e = e.subst_type(name, typ);
             check_expr(&e, env)
         }
@@ -107,7 +107,7 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
             box check_expr(e1, env)?,
             box check_expr(e2, env)?,
         )),
-        parsed::Expr::BinOp(ref op, box ref e1, box ref e2) => Ok(typed::Expr::BinOp(
+        parsed::Expr::BinOp(ref op, box ref e1, box ref e2, _) => Ok(typed::Expr::BinOp(
             *op,
             box check_expr(e1, env)?,
             box check_expr(e2, env)?,
@@ -139,7 +139,7 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
             };
             let arms: Result<_, _> = arms
                 .iter()
-                .map(|(ref arm, _)| {
+                .map(|ref arm| {
                     let field = fields_ty
                         .iter()
                         .find(|(ref label, _)| &arm.label == label)
@@ -155,23 +155,23 @@ pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Exp
                 .collect();
             Ok(typed::Expr::PatternMatch(box e, arms?))
         }
-        parsed::Expr::Println(box ref e, _) => Ok(typed::Expr::Println(box check_expr(e, env)?)),
+        parsed::Expr::Println(box ref e) => Ok(typed::Expr::Println(box check_expr(e, env)?)),
     }
 }
 
 pub fn check_lit(lit: &parsed::Literal, env: &Env<typed::Type>) -> Result<typed::Literal, Error> {
     match lit {
-        parsed::Literal::Number(n, _) => Ok(typed::Literal::Number(*n)),
-        parsed::Literal::Bool(b, _) => Ok(typed::Literal::Bool(*b)),
-        parsed::Literal::Char(c, _) => Ok(typed::Literal::Char(*c)),
-        parsed::Literal::Unit(_) => Ok(typed::Literal::Unit),
+        parsed::Literal::Number(n) => Ok(typed::Literal::Number(*n)),
+        parsed::Literal::Bool(b) => Ok(typed::Literal::Bool(*b)),
+        parsed::Literal::Char(c) => Ok(typed::Literal::Char(*c)),
+        parsed::Literal::Unit => Ok(typed::Literal::Unit),
 
         parsed::Literal::Variant(ref label, box ref e, ref typ, _) => Ok(typed::Literal::Variant(
             label.clone(),
             box check_expr(e, env)?,
             typed::Type::from_parsed_type(typ),
         )),
-        parsed::Literal::Record(ref fields, _) => {
+        parsed::Literal::Record(ref fields) => {
             let fields: Result<_, _> = fields
                 .iter()
                 .map(|(ref label, ref e)| Ok((label.clone(), check_expr(e, env)?)))
@@ -179,7 +179,7 @@ pub fn check_lit(lit: &parsed::Literal, env: &Env<typed::Type>) -> Result<typed:
             let fields = fields?;
             Ok(typed::Literal::Record(fields))
         }
-        parsed::Literal::Tuple(ref es, _) => {
+        parsed::Literal::Tuple(ref es) => {
             let fields: Result<_, _> = es
                 .iter()
                 .enumerate()

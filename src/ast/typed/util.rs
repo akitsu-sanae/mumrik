@@ -6,22 +6,22 @@ impl Type {
     // precondition: `typ` does not contain type variable.
     pub fn from_parsed_type(typ: &parsed::Type) -> Self {
         match typ {
-            parsed::Type::Int(_) => Type::Int,
-            parsed::Type::Bool(_) => Type::Bool,
-            parsed::Type::Char(_) => Type::Char,
-            parsed::Type::Unit(_) => Type::Unit,
+            parsed::Type::Int => Type::Int,
+            parsed::Type::Bool => Type::Bool,
+            parsed::Type::Char => Type::Char,
+            parsed::Type::Unit => Type::Unit,
             parsed::Type::Var(_, _) => unreachable!(),
-            parsed::Type::Func(box ref typ1, box ref typ2, _) => Type::Func(
+            parsed::Type::Func(box ref typ1, box ref typ2) => Type::Func(
                 box Self::from_parsed_type(typ1),
                 box Self::from_parsed_type(typ2),
             ),
-            parsed::Type::Record(fields, _) => Type::Record(
+            parsed::Type::Record(fields) => Type::Record(
                 fields
                     .iter()
                     .map(|(label, typ)| (label.clone(), Self::from_parsed_type(typ)))
                     .collect(),
             ),
-            parsed::Type::Variant(ctors, _) => Type::Variant(
+            parsed::Type::Variant(ctors) => Type::Variant(
                 ctors
                     .iter()
                     .map(|(label, typ)| (label.clone(), Self::from_parsed_type(typ)))

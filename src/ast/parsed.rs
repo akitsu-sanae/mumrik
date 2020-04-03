@@ -13,10 +13,10 @@ pub struct Position {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToplevelExpr {
-    Func(Func, Position),
-    RecFunc(RecFunc, Position),
-    Let(Let, Position),
-    LetType(LetType, Position),
+    Func(Func),
+    RecFunc(RecFunc),
+    Let(Let),
+    LetType(LetType),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,40 +52,40 @@ pub struct LetType {
 pub enum Expr {
     Const(Literal),
     Var(Ident, Position),
-    Lambda(Ident, Type, Box<Expr>, Position),
-    Apply(Box<Expr>, Box<Expr>),
-    Let(Ident, Box<Expr>, Box<Expr>, Position),
-    LetType(Ident, Type, Box<Expr>, Position),
+    Lambda(Ident, Type, Box<Expr>),
+    Apply(Box<Expr>, Box<Expr>, Position),
+    Let(Ident, Box<Expr>, Box<Expr>),
+    LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
-    BinOp(BinOp, Box<Expr>, Box<Expr>),
+    BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
     Sequence(Vec<Expr>),
     FieldAccess(Box<Expr>, Ident, Position),
-    PatternMatch(Box<Expr>, Vec<(PatternMatchArm, Position)>, Position),
-    Println(Box<Expr>, Position),
+    PatternMatch(Box<Expr>, Vec<PatternMatchArm>, Position),
+    Println(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-    Number(i32, Position),
-    Bool(bool, Position),
-    Char(char, Position),
-    Unit(Position),
+    Number(i32),
+    Bool(bool),
+    Char(char),
+    Unit,
 
     Variant(Ident, Box<Expr>, Type, Position),
-    Record(Vec<(Ident, Expr)>, Position),
-    Tuple(Vec<Expr>, Position),
+    Record(Vec<(Ident, Expr)>),
+    Tuple(Vec<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-    Int(Position),
-    Bool(Position),
-    Char(Position),
-    Unit(Position),
+    Int,
+    Bool,
+    Char,
+    Unit,
     Var(Ident, Position),
-    Func(Box<Type>, Box<Type>, Position),
-    Record(Vec<(Ident, Type)>, Position),
-    Variant(Vec<(Ident, Type)>, Position),
+    Func(Box<Type>, Box<Type>),
+    Record(Vec<(Ident, Type)>),
+    Variant(Vec<(Ident, Type)>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

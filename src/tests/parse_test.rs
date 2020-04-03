@@ -6,32 +6,17 @@ use parser::*;
 fn primitive_literal() {
     assert_eq!(
         program("123"),
-        Ok((
-            vec![],
-            Expr::Const(Literal::Number(123, Position { start: 0, end: 3 }))
-        ))
+        Ok((vec![], Expr::Const(Literal::Number(123))))
     );
     assert_eq!(
         program("true"),
-        Ok((
-            vec![],
-            Expr::Const(Literal::Bool(true, Position { start: 0, end: 4 }))
-        ))
+        Ok((vec![], Expr::Const(Literal::Bool(true))))
     );
     assert_eq!(
         program("false"),
-        Ok((
-            vec![],
-            Expr::Const(Literal::Bool(false, Position { start: 0, end: 5 }))
-        ))
+        Ok((vec![], Expr::Const(Literal::Bool(false))))
     );
-    assert_eq!(
-        program("unit"),
-        Ok((
-            vec![],
-            Expr::Const(Literal::Unit(Position { start: 0, end: 4 }))
-        ))
-    );
+    assert_eq!(program("unit"), Ok((vec![], Expr::Const(Literal::Unit))));
     assert_eq!(
         program("a"),
         Ok((
@@ -50,11 +35,11 @@ fn apply() {
             Expr::Apply(
                 box Expr::Lambda(
                     Ident::new("x"),
-                    Type::Int(Position { start: 8, end: 12 }),
+                    Type::Int,
                     box Expr::Var(Ident::new("x"), Position { start: 15, end: 16 }),
-                    Position { start: 1, end: 16 }
                 ),
-                box Expr::Const(Literal::Number(1, Position { start: 18, end: 19 }))
+                box Expr::Const(Literal::Number(1)),
+                Position { start: 0, end: 19 }
             )
         ))
     );
@@ -67,9 +52,9 @@ fn sequence() {
         Ok((
             vec![],
             Expr::Sequence(vec![
-                Expr::Const(Literal::Number(1, Position { start: 0, end: 1 })),
-                Expr::Const(Literal::Number(2, Position { start: 3, end: 4 })),
-                Expr::Const(Literal::Number(3, Position { start: 6, end: 7 }))
+                Expr::Const(Literal::Number(1)),
+                Expr::Const(Literal::Number(2)),
+                Expr::Const(Literal::Number(3))
             ])
         ))
     );
@@ -82,9 +67,9 @@ fn if_() {
         Ok((
             vec![],
             Expr::If(
-                box Expr::Const(Literal::Bool(true, Position { start: 3, end: 8 })),
-                box Expr::Const(Literal::Number(1, Position { start: 10, end: 12 })),
-                box Expr::Const(Literal::Number(2, Position { start: 21, end: 23 })),
+                box Expr::Const(Literal::Bool(true)),
+                box Expr::Const(Literal::Number(1)),
+                box Expr::Const(Literal::Number(2)),
                 Position { start: 0, end: 24 }
             )
         ))
@@ -101,14 +86,17 @@ fn arithmetic() {
                 BinOp::Add,
                 box Expr::BinOp(
                     BinOp::Add,
-                    box Expr::Const(Literal::Number(1, Position { start: 0, end: 1 })),
+                    box Expr::Const(Literal::Number(1)),
                     box Expr::BinOp(
                         BinOp::Mult,
-                        box Expr::Const(Literal::Number(2, Position { start: 2, end: 3 })),
-                        box Expr::Const(Literal::Number(5, Position { start: 4, end: 5 }))
-                    )
+                        box Expr::Const(Literal::Number(2)),
+                        box Expr::Const(Literal::Number(5)),
+                        Position { start: 3, end: 4 }
+                    ),
+                    Position { start: 1, end: 2 }
                 ),
-                box Expr::Const(Literal::Number(6, Position { start: 6, end: 7 }))
+                box Expr::Const(Literal::Number(6)),
+                Position { start: 5, end: 6 }
             )
         ))
     );
@@ -122,8 +110,9 @@ fn compare() {
             vec![],
             Expr::BinOp(
                 BinOp::Lt,
-                box Expr::Const(Literal::Number(1, Position { start: 0, end: 2 })),
-                box Expr::Const(Literal::Number(2, Position { start: 4, end: 5 }))
+                box Expr::Const(Literal::Number(1)),
+                box Expr::Const(Literal::Number(2)),
+                Position { start: 2, end: 4 }
             )
         ))
     );
@@ -133,8 +122,9 @@ fn compare() {
             vec![],
             Expr::BinOp(
                 BinOp::Gt,
-                box Expr::Const(Literal::Number(1, Position { start: 0, end: 2 })),
-                box Expr::Const(Literal::Number(2, Position { start: 4, end: 5 }))
+                box Expr::Const(Literal::Number(1)),
+                box Expr::Const(Literal::Number(2)),
+                Position { start: 2, end: 4 }
             )
         ))
     );
@@ -146,19 +136,10 @@ fn record() {
         program("{ id=42, value=123 }"),
         Ok((
             vec![],
-            Expr::Const(Literal::Record(
-                vec![
-                    (
-                        Ident::new("id"),
-                        Expr::Const(Literal::Number(42, Position { start: 5, end: 7 }))
-                    ),
-                    (
-                        Ident::new("value"),
-                        Expr::Const(Literal::Number(123, Position { start: 15, end: 19 }))
-                    ),
-                ],
-                Position { start: 0, end: 20 }
-            ))
+            Expr::Const(Literal::Record(vec![
+                (Ident::new("id"), Expr::Const(Literal::Number(42))),
+                (Ident::new("value"), Expr::Const(Literal::Number(123))),
+            ],))
         ))
     );
 }
@@ -169,14 +150,11 @@ fn tuple() {
         program("(1, 2, 3)"),
         Ok((
             vec![],
-            Expr::Const(Literal::Tuple(
-                vec![
-                    Expr::Const(Literal::Number(1, Position { start: 1, end: 2 })),
-                    Expr::Const(Literal::Number(2, Position { start: 4, end: 5 })),
-                    Expr::Const(Literal::Number(3, Position { start: 7, end: 8 })),
-                ],
-                Position { start: 0, end: 9 }
-            ))
+            Expr::Const(Literal::Tuple(vec![
+                Expr::Const(Literal::Number(1)),
+                Expr::Const(Literal::Number(2)),
+                Expr::Const(Literal::Number(3)),
+            ],))
         ))
     );
 }
@@ -188,13 +166,10 @@ fn field_access() {
         Ok((
             vec![],
             Expr::FieldAccess(
-                box Expr::Const(Literal::Record(
-                    vec![(
-                        Ident::new("id"),
-                        Expr::Const(Literal::Number(42, Position { start: 4, end: 6 }))
-                    )],
-                    Position { start: 0, end: 7 }
-                )),
+                box Expr::Const(Literal::Record(vec![(
+                    Ident::new("id"),
+                    Expr::Const(Literal::Number(42))
+                )],)),
                 Ident::new("id"),
                 Position { start: 0, end: 10 }
             )
@@ -214,28 +189,16 @@ type Nyan = enum {
 Nyan::Hoge(42)"#
         ),
         Ok((
-            vec![ToplevelExpr::LetType(
-                LetType {
-                    name: Ident::new("Nyan"),
-                    typ: Type::Variant(
-                        vec![
-                            (
-                                Ident::new("Hoge"),
-                                Type::Int(Position { start: 30, end: 33 })
-                            ),
-                            (
-                                Ident::new("Fuga"),
-                                Type::Bool(Position { start: 45, end: 49 })
-                            )
-                        ],
-                        Position { start: 13, end: 52 }
-                    ),
-                },
-                Position { start: 1, end: 54 }
-            )],
+            vec![ToplevelExpr::LetType(LetType {
+                name: Ident::new("Nyan"),
+                typ: Type::Variant(vec![
+                    (Ident::new("Hoge"), Type::Int),
+                    (Ident::new("Fuga"), Type::Bool)
+                ]),
+            },)],
             Expr::Const(Literal::Variant(
                 Ident::new("Hoge"),
-                box Expr::Const(Literal::Number(42, Position { start: 65, end: 67 })),
+                box Expr::Const(Literal::Number(42)),
                 Type::Var(Ident::new("Nyan"), Position { start: 54, end: 58 }),
                 Position { start: 54, end: 68 }
             ))
@@ -259,88 +222,50 @@ match Nyan::Hoge(42) {
 "#
         ),
         Ok((
-            vec![ToplevelExpr::LetType(
-                LetType {
-                    name: Ident::new("Nyan"),
-                    typ: Type::Variant(
-                        vec![
-                            (
-                                Ident::new("Hoge"),
-                                Type::Int(Position { start: 30, end: 38 })
-                            ),
-                            (
-                                Ident::new("Fuga"),
-                                Type::Bool(Position { start: 44, end: 49 })
-                            )
-                        ],
-                        Position { start: 13, end: 50 }
-                    ),
-                },
-                Position { start: 1, end: 52 }
-            )],
+            vec![ToplevelExpr::LetType(LetType {
+                name: Ident::new("Nyan"),
+                typ: Type::Variant(vec![
+                    (Ident::new("Hoge"), Type::Int),
+                    (Ident::new("Fuga"), Type::Bool)
+                ]),
+            })],
             Expr::PatternMatch(
                 box Expr::Const(Literal::Variant(
                     Ident::new("Hoge"),
-                    box Expr::Const(Literal::Number(42, Position { start: 69, end: 71 })),
+                    box Expr::Const(Literal::Number(42)),
                     Type::Var(Ident::new("Nyan"), Position { start: 58, end: 62 }),
                     Position { start: 58, end: 73 }
                 )),
                 vec![
-                    (
-                        PatternMatchArm {
-                            label: Ident::new("Hoge"),
-                            name: Ident::new("x"),
-                            body: Expr::BinOp(
-                                BinOp::Add,
-                                box Expr::Var(Ident::new("x"), Position { start: 89, end: 91 }),
-                                box Expr::Const(Literal::Number(
-                                    1,
-                                    Position { start: 93, end: 94 }
-                                ))
-                            ),
-                        },
-                        Position {
-                            start: 79,
-                            end: 100
-                        }
-                    ),
-                    (
-                        PatternMatchArm {
-                            label: Ident::new("Fuga"),
-                            name: Ident::new("x"),
-                            body: Expr::If(
-                                box Expr::Var(
-                                    Ident::new("x"),
-                                    Position {
-                                        start: 113,
-                                        end: 115
-                                    }
-                                ),
-                                box Expr::Const(Literal::Number(
-                                    100,
-                                    Position {
-                                        start: 117,
-                                        end: 121
-                                    }
-                                )),
-                                box Expr::Const(Literal::Number(
-                                    200,
-                                    Position {
-                                        start: 130,
-                                        end: 134
-                                    }
-                                )),
+                    PatternMatchArm {
+                        label: Ident::new("Hoge"),
+                        name: Ident::new("x"),
+                        body: Expr::BinOp(
+                            BinOp::Add,
+                            box Expr::Var(Ident::new("x"), Position { start: 89, end: 91 }),
+                            box Expr::Const(Literal::Number(1)),
+                            Position { start: 91, end: 93 }
+                        ),
+                    },
+                    PatternMatchArm {
+                        label: Ident::new("Fuga"),
+                        name: Ident::new("x"),
+                        body: Expr::If(
+                            box Expr::Var(
+                                Ident::new("x"),
                                 Position {
-                                    start: 110,
-                                    end: 136
+                                    start: 113,
+                                    end: 115
                                 }
                             ),
-                        },
-                        Position {
-                            start: 100,
-                            end: 136
-                        }
-                    )
+                            box Expr::Const(Literal::Number(100)),
+                            box Expr::Const(Literal::Number(200)),
+                            Position {
+                                start: 110,
+                                end: 136
+                            }
+                        ),
+                    },
                 ],
                 Position {
                     start: 52,
@@ -358,18 +283,9 @@ fn println() {
         Ok((
             vec![],
             Expr::Sequence(vec![
-                Expr::Println(
-                    box Expr::Const(Literal::Number(1, Position { start: 8, end: 9 })),
-                    Position { start: 0, end: 9 }
-                ),
-                Expr::Println(
-                    box Expr::Const(Literal::Bool(true, Position { start: 19, end: 23 })),
-                    Position { start: 11, end: 23 }
-                ),
-                Expr::Println(
-                    box Expr::Const(Literal::Unit(Position { start: 33, end: 37 })),
-                    Position { start: 25, end: 37 }
-                ),
+                Expr::Println(box Expr::Const(Literal::Number(1))),
+                Expr::Println(box Expr::Const(Literal::Bool(true))),
+                Expr::Println(box Expr::Const(Literal::Unit)),
             ])
         ))
     );
@@ -387,22 +303,21 @@ f 13
 "#
         ),
         Ok((
-            vec![ToplevelExpr::Func(
-                Func {
-                    name: Ident::new("f"),
-                    param_name: Ident::new("a"),
-                    param_type: Type::Int(Position { start: 10, end: 14 }),
-                    body: Expr::BinOp(
-                        BinOp::Add,
-                        box Expr::Var(Ident::new("a"), Position { start: 20, end: 22 }),
-                        box Expr::Const(Literal::Number(12, Position { start: 24, end: 27 }))
-                    ),
-                },
-                Position { start: 1, end: 29 }
-            )],
+            vec![ToplevelExpr::Func(Func {
+                name: Ident::new("f"),
+                param_name: Ident::new("a"),
+                param_type: Type::Int,
+                body: Expr::BinOp(
+                    BinOp::Add,
+                    box Expr::Var(Ident::new("a"), Position { start: 20, end: 22 }),
+                    box Expr::Const(Literal::Number(12)),
+                    Position { start: 22, end: 24 }
+                ),
+            })],
             Expr::Apply(
                 box Expr::Var(Ident::new("f"), Position { start: 29, end: 31 }),
-                box Expr::Const(Literal::Number(13, Position { start: 31, end: 34 }))
+                box Expr::Const(Literal::Number(13)),
+                Position { start: 29, end: 34 }
             )
         ))
     );
@@ -424,52 +339,49 @@ fib 3
 "#
         ),
         Ok((
-            vec![ToplevelExpr::RecFunc(
-                RecFunc {
-                    name: Ident::new("fib"),
-                    param_name: Ident::new("x"),
-                    param_type: Type::Int(Position { start: 16, end: 20 }),
-                    ret_type: Type::Int(Position { start: 21, end: 25 }),
-                    body: Expr::If(
-                        box Expr::BinOp(
-                            BinOp::Lt,
-                            box Expr::Var(Ident::new("x"), Position { start: 34, end: 36 }),
-                            box Expr::Const(Literal::Number(2, Position { start: 38, end: 40 }))
-                        ),
-                        box Expr::Const(Literal::Number(1, Position { start: 50, end: 56 })),
-                        box Expr::BinOp(
-                            BinOp::Add,
-                            box Expr::Apply(
-                                box Expr::Var(Ident::new("fib"), Position { start: 73, end: 77 }),
-                                box Expr::BinOp(
-                                    BinOp::Sub,
-                                    box Expr::Var(Ident::new("x"), Position { start: 78, end: 79 }),
-                                    box Expr::Const(Literal::Number(
-                                        1,
-                                        Position { start: 80, end: 81 }
-                                    ))
-                                )
-                            ),
-                            box Expr::Apply(
-                                box Expr::Var(Ident::new("fib"), Position { start: 85, end: 89 }),
-                                box Expr::BinOp(
-                                    BinOp::Sub,
-                                    box Expr::Var(Ident::new("x"), Position { start: 90, end: 91 }),
-                                    box Expr::Const(Literal::Number(
-                                        2,
-                                        Position { start: 92, end: 93 }
-                                    ))
-                                )
-                            )
-                        ),
-                        Position {
-                            start: 31,
-                            end: 101
-                        }
+            vec![ToplevelExpr::RecFunc(RecFunc {
+                name: Ident::new("fib"),
+                param_name: Ident::new("x"),
+                param_type: Type::Int,
+                ret_type: Type::Int,
+                body: Expr::If(
+                    box Expr::BinOp(
+                        BinOp::Lt,
+                        box Expr::Var(Ident::new("x"), Position { start: 34, end: 36 }),
+                        box Expr::Const(Literal::Number(2)),
+                        Position { start: 36, end: 38 }
                     ),
-                },
-                Position { start: 1, end: 103 }
-            )],
+                    box Expr::Const(Literal::Number(1)),
+                    box Expr::BinOp(
+                        BinOp::Add,
+                        box Expr::Apply(
+                            box Expr::Var(Ident::new("fib"), Position { start: 73, end: 77 }),
+                            box Expr::BinOp(
+                                BinOp::Sub,
+                                box Expr::Var(Ident::new("x"), Position { start: 78, end: 79 }),
+                                box Expr::Const(Literal::Number(1)),
+                                Position { start: 79, end: 80 }
+                            ),
+                            Position { start: 73, end: 83 }
+                        ),
+                        box Expr::Apply(
+                            box Expr::Var(Ident::new("fib"), Position { start: 85, end: 89 }),
+                            box Expr::BinOp(
+                                BinOp::Sub,
+                                box Expr::Var(Ident::new("x"), Position { start: 90, end: 91 }),
+                                box Expr::Const(Literal::Number(2)),
+                                Position { start: 91, end: 92 }
+                            ),
+                            Position { start: 85, end: 99 }
+                        ),
+                        Position { start: 83, end: 85 }
+                    ),
+                    Position {
+                        start: 31,
+                        end: 101
+                    }
+                ),
+            })],
             Expr::Apply(
                 box Expr::Var(
                     Ident::new("fib"),
@@ -478,13 +390,11 @@ fib 3
                         end: 107
                     }
                 ),
-                box Expr::Const(Literal::Number(
-                    3,
-                    Position {
-                        start: 107,
-                        end: 109
-                    }
-                ))
+                box Expr::Const(Literal::Number(3)),
+                Position {
+                    start: 103,
+                    end: 109
+                }
             )
         ))
     );
@@ -495,14 +405,11 @@ fn let_type_func() {
     assert_eq!(
         program("type a = Int; 42"),
         Ok((
-            vec![ToplevelExpr::LetType(
-                LetType {
-                    name: Ident::new("a"),
-                    typ: Type::Int(Position { start: 9, end: 12 }),
-                },
-                Position { start: 0, end: 14 }
-            )],
-            Expr::Const(Literal::Number(42, Position { start: 14, end: 16 }))
+            vec![ToplevelExpr::LetType(LetType {
+                name: Ident::new("a"),
+                typ: Type::Int,
+            })],
+            Expr::Const(Literal::Number(42))
         ))
     );
 }

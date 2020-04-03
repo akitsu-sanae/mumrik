@@ -8,28 +8,19 @@ use typecheck::*;
 fn primitive_literal() {
     let env = Env::new();
     assert_eq!(
-        check_lit(
-            &parsed::Literal::Number(42, Position { start: 0, end: 0 }),
-            &env
-        ),
+        check_lit(&parsed::Literal::Number(42), &env),
         Ok(typed::Literal::Number(42))
     );
     assert_eq!(
-        check_lit(
-            &parsed::Literal::Bool(true, Position { start: 0, end: 0 }),
-            &env
-        ),
+        check_lit(&parsed::Literal::Bool(true), &env),
         Ok(typed::Literal::Bool(true))
     );
     assert_eq!(
-        check_lit(
-            &parsed::Literal::Char('c', Position { start: 0, end: 0 }),
-            &env
-        ),
+        check_lit(&parsed::Literal::Char('c'), &env),
         Ok(typed::Literal::Char('c'))
     );
     assert_eq!(
-        check_lit(&parsed::Literal::Unit(Position { start: 0, end: 0 }), &env),
+        check_lit(&parsed::Literal::Unit, &env),
         Ok(typed::Literal::Unit)
     );
 }
@@ -45,7 +36,8 @@ fn apply() {
         check_expr(
             &Apply(
                 box Var(Ident::new("a"), Position { start: 0, end: 0 }),
-                box Const(Number(1, Position { start: 0, end: 0 }))
+                box Const(Number(1)),
+                Position { start: 0, end: 0 }
             ),
             &env
         ),
@@ -66,9 +58,9 @@ fn if_() {
     assert_eq!(
         check_expr(
             &If(
-                box Const(Bool(true, Position { start: 0, end: 0 })),
-                box Const(Number(1, Position { start: 0, end: 0 })),
-                box Const(Number(2, Position { start: 0, end: 0 })),
+                box Const(Bool(true)),
+                box Const(Number(1)),
+                box Const(Number(2)),
                 Position { start: 0, end: 0 }
             ),
             &env
@@ -90,23 +82,17 @@ fn arithmetic() {
                 BinOp::Add,
                 box parsed::Expr::BinOp(
                     BinOp::Add,
-                    box parsed::Expr::Const(parsed::Literal::Number(
-                        1,
-                        Position { start: 0, end: 0 }
-                    )),
+                    box parsed::Expr::Const(parsed::Literal::Number(1)),
                     box parsed::Expr::BinOp(
                         BinOp::Mult,
-                        box parsed::Expr::Const(parsed::Literal::Number(
-                            2,
-                            Position { start: 0, end: 0 }
-                        )),
-                        box parsed::Expr::Const(parsed::Literal::Number(
-                            5,
-                            Position { start: 0, end: 0 }
-                        ))
-                    )
+                        box parsed::Expr::Const(parsed::Literal::Number(2)),
+                        box parsed::Expr::Const(parsed::Literal::Number(5)),
+                        Position { start: 0, end: 0 }
+                    ),
+                    Position { start: 0, end: 0 }
                 ),
-                box parsed::Expr::Const(parsed::Literal::Number(6, Position { start: 0, end: 0 }))
+                box parsed::Expr::Const(parsed::Literal::Number(6)),
+                Position { start: 0, end: 0 }
             ),
             &env
         ),
@@ -133,14 +119,12 @@ fn let_type() {
         check_expr(
             &parsed::Expr::LetType(
                 Ident::new("i"),
-                parsed::Type::Int(Position { start: 0, end: 0 }),
+                parsed::Type::Int,
                 box parsed::Expr::Lambda(
                     Ident::new("a"),
                     parsed::Type::Var(Ident::new("i"), Position { start: 0, end: 0 }),
                     box parsed::Expr::Var(Ident::new("a"), Position { start: 0, end: 0 }),
-                    Position { start: 0, end: 0 }
-                ),
-                Position { start: 0, end: 0 }
+                )
             ),
             &env
         ),
