@@ -14,8 +14,8 @@ pub enum Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnmatchTypeError {
     pub pos: Position,
-    pub expected: parsed::Type,
-    pub actual: parsed::Type,
+    pub expected: typed::Type,
+    pub actual: typed::Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,8 +29,13 @@ pub fn check_program(program: &parsed::Program) -> Result<typed::Expr, Error> {
     let mut toplevel_funcs = vec![];
     for toplevel_expr in program.0.iter() {
         match toplevel_expr {
-            parsed::ToplevelExpr::Func(func) => {
-                let (name, expr, typ) = check_func(func)?;
+            parsed::ToplevelExpr::Func(ref func) => {
+                let (name, expr, typ) = check_func(func, &env)?;
+                env = env.add(name.clone(), typ);
+                toplevel_funcs.push((name, expr));
+            }
+            parsed::ToplevelExpr::RecFunc(ref rec_func) => {
+                let (name, expr, typ) = check_rec_func(rec_func, &env)?;
                 env = env.add(name.clone(), typ);
                 toplevel_funcs.push((name, expr));
             }
@@ -40,8 +45,42 @@ pub fn check_program(program: &parsed::Program) -> Result<typed::Expr, Error> {
     check_expr(&program.1, &env)
 }
 
-pub fn check_func(func: &parsed::Func) -> Result<(Ident, typed::Expr, typed::Type), Error> {
-    todo!()
+fn check_func(
+    func: &parsed::Func,
+    env: &Env<typed::Type>,
+) -> Result<(Ident, typed::Expr, typed::Type), Error> {
+    let param_type = typed::Type::from_parsed_type(&func.param_type);
+    let env = env.add(func.param_name.clone(), param_type.clone());
+    let body = check_expr(&func.body, &env)?;
+    let ret_type = typed::type_of(&body);
+    Ok((
+        func.name.clone(),
+        typed::Expr::Lambda(func.param_name.clone(), param_type.clone(), box body),
+        typed::Type::Func(box param_type, box ret_type),
+    ))
+}
+
+fn check_rec_func(
+    rec_func: &parsed::RecFunc,
+    env: &Env<typed::Type>,
+) -> Result<(Ident, typed::Expr, typed::Type), Error> {
+    let param_type = typed::Type::from_parsed_type(&rec_func.param_type);
+    let env = env.add(rec_func.param_name.clone(), param_type.clone());
+    let body = check_expr(&rec_func.body, &env)?;
+    let expected_ret_type = typed::Type::from_parsed_type(&rec_func.ret_type);
+    let actual_ret_type = typed::type_of(&body);
+    if &actual_ret_type != &expected_ret_type {
+        return Err(Error::UnmatchType(UnmatchTypeError {
+            pos: Position { start: 0, end: 0 }, // TODO
+            expected: expected_ret_type,
+            actual: actual_ret_type,
+        }));
+    }
+    Ok((
+        rec_func.name.clone(),
+        typed::Expr::Lambda(rec_func.param_name.clone(), param_type.clone(), box body),
+        typed::Type::Func(box param_type, box actual_ret_type),
+    ))
 }
 
 pub fn check_expr(e: &parsed::Expr, env: &Env<typed::Type>) -> Result<typed::Expr, Error> {
