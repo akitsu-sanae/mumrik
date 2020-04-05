@@ -1,0 +1,156 @@
+use super::*;
+
+impl Expr {
+    pub fn subst_type(self, name: &Ident, typ: &Type) -> Expr {
+        aux_expr(
+            self,
+            name,
+            typ,
+            |e, name, _| match &e {
+                Expr::LetType(ref name_, _, _) if name_ == name => Some(e),
+                _ => None,
+            },
+            |_, _, _| None,
+            |typ_, name, typ| match typ_ {
+                Type::Var(name_) if name == &name_ => Some(typ.clone()),
+                _ => None,
+            },
+        )
+    }
+    pub fn subst_expr(self, name: &Ident, expr: &Expr) -> Expr {
+        aux_expr(
+            self,
+            name,
+            expr,
+            |e, name, expr| match &e {
+                Expr::Var(ref name_, _) if name == name_ => Some(expr.clone()),
+                Expr::Let(ref name_, _, _) | Expr::LetRec(ref name_, _, _, _, _)
+                    if name == name_ =>
+                {
+                    Some(e)
+                }
+                _ => None,
+            },
+            |lit, name, _| match &lit {
+                Literal::Func(ref name_, _, _, _) if name == name_ => Some(lit),
+                _ => None,
+            },
+            |_, _, _| None,
+        )
+    }
+}
+
+fn aux_expr<T>(
+    e: Expr,
+    name: &Ident,
+    v: &T,
+    ef: fn(Expr, &Ident, &T) -> Option<Expr>,
+    lf: fn(Literal, &Ident, &T) -> Option<Literal>,
+    tf: fn(Type, &Ident, &T) -> Option<Type>,
+) -> Expr {
+    if let Some(e) = ef(e.clone(), name, v) {
+        return e;
+    }
+    match e {
+        Expr::Const(lit) => Expr::Const(aux_literal(lit, name, v, ef, lf, tf)),
+        Expr::Var(name, pos) => Expr::Var(name, pos),
+        Expr::Apply(box e1, box e2, pos) => Expr::Apply(
+            box aux_expr(e1, name, v, ef, lf, tf),
+            box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
+        ),
+        Expr::Let(name_, box e1, box e2) => Expr::Let(
+            name_,
+            box aux_expr(e1, name, v, ef, lf, tf),
+            box aux_expr(e2, name, v, ef, lf, tf),
+        ),
+        Expr::LetRec(name_, typ, box e1, box e2, pos) => Expr::LetRec(
+            name_,
+            typ,
+            box aux_expr(e1, name, v, ef, lf, tf),
+            box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
+        ),
+        Expr::LetType(name_, typ, box e) => Expr::LetType(
+            name_,
+            aux_type(typ, name, v, ef, lf, tf),
+            box aux_expr(e, name, v, ef, lf, tf),
+        ),
+        Expr::If(box cond, box e1, box e2, pos) => Expr::If(
+            box aux_expr(cond, name, v, ef, lf, tf),
+            box aux_expr(e1, name, v, ef, lf, tf),
+            box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
+        ),
+        Expr::BinOp(op, box e1, box e2, pos) => Expr::BinOp(
+            op,
+            box aux_expr(e1, name, v, ef, lf, tf),
+            box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
+        ),
+        Expr::FieldAccess(box e, label, pos) => {
+            Expr::FieldAccess(box aux_expr(e, name, v, ef, lf, tf), label, pos)
+        }
+        Expr::Println(box e) => Expr::Println(box aux_expr(e, name, v, ef, lf, tf)),
+    }
+}
+
+fn aux_literal<T>(
+    lit: Literal,
+    name: &Ident,
+    v: &T,
+    ef: fn(Expr, &Ident, &T) -> Option<Expr>,
+    lf: fn(Literal, &Ident, &T) -> Option<Literal>,
+    tf: fn(Type, &Ident, &T) -> Option<Type>,
+) -> Literal {
+    if let Some(lit) = lf(lit.clone(), name, v) {
+        return lit;
+    }
+    match lit {
+        Literal::Func(param_name, param_type, None, box e) => Literal::Func(
+            param_name,
+            aux_type(param_type, name, v, ef, lf, tf),
+            None,
+            box aux_expr(e, name, v, ef, lf, tf),
+        ),
+        Literal::Func(param_name, param_type, Some(ret_type), box e) => Literal::Func(
+            param_name,
+            aux_type(param_type, name, v, ef, lf, tf),
+            Some(aux_type(ret_type, name, v, ef, lf, tf)),
+            box aux_expr(e, name, v, ef, lf, tf),
+        ),
+        Literal::Record(fields) => Literal::Record(
+            fields
+                .into_iter()
+                .map(|(label, e)| (label, aux_expr(e, name, v, ef, lf, tf)))
+                .collect(),
+        ),
+        _ => lit,
+    }
+}
+
+fn aux_type<T>(
+    typ: Type,
+    name: &Ident,
+    v: &T,
+    ef: fn(Expr, &Ident, &T) -> Option<Expr>,
+    lf: fn(Literal, &Ident, &T) -> Option<Literal>,
+    tf: fn(Type, &Ident, &T) -> Option<Type>,
+) -> Type {
+    if let Some(typ) = tf(typ.clone(), name, v) {
+        return typ;
+    }
+    match typ {
+        Type::Func(box t1, box t2) => Type::Func(
+            box aux_type(t1, name, v, ef, lf, tf),
+            box aux_type(t2, name, v, ef, lf, tf),
+        ),
+        Type::Record(fields) => Type::Record(
+            fields
+                .into_iter()
+                .map(|(label, typ)| (label, aux_type(typ, name, v, ef, lf, tf)))
+                .collect(),
+        ),
+        _ => typ,
+    }
+}

@@ -5,10 +5,10 @@ extern crate nf2llvmir as nf;
 extern crate peg;
 
 mod ast;
-mod typecheck;
+// mod typecheck;
 // mod codegen;
 mod env;
-mod eval;
+// mod eval;
 mod ident;
 mod parser;
 
@@ -53,24 +53,24 @@ impl fmt::Display for Expected {
 
 fn exec(src: &str) {
     match parser::program(src) {
-        Ok(program) => match typecheck::check_program(&program) {
-            Ok(expr) => {
-                let value = eval::expr(&expr);
-                println!("{:?}", value);
-                // codegen::codegen(expr, "output.ll");
-            }
-            Err(err) => match err {
-                typecheck::Error::UnmatchType(err) => {
-                    println!(
-                        "at {:?}, expected is {:?} but actual is {:?}",
-                        err.pos, err.expected, err.actual
-                    );
-                }
-                typecheck::Error::UnboundVariable(err) => {
-                    println!("at {:?}, unbound variable {:?}", err.pos, err.name);
-                }
-            },
+        Ok(program) => println!("{:?}", program), /* match typecheck::check_program(&program) {
+        Ok(expr) => {
+        let value = eval::expr(&expr);
+        println!("{:?}", value);
+        // codegen::codegen(expr, "output.ll");
+        }
+        Err(err) => match err {
+        typecheck::Error::UnmatchType(err) => {
+        println!(
+        "at {:?}, expected is {:?} but actual is {:?}",
+        err.pos, err.expected, err.actual
+        );
+        }
+        typecheck::Error::UnboundVariable(err) => {
+        println!("at {:?}, unbound variable {:?}", err.pos, err.name);
+        }
         },
+        }, */
         Err(err) => {
             let lines: Vec<_> = src.split('\n').collect();
             println!("{}", lines[err.location.line - 1]);

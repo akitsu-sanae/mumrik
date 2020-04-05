@@ -1,8 +1,4 @@
-use ast::parsed::{
-    Expr, Func, Let, LetType, Literal, PatternMatchArm, Position, Program, RecFunc, ToplevelExpr,
-    Type,
-};
-use ast::BinOp;
+use ast::*;
 use ident::Ident;
 use peg;
 
@@ -19,65 +15,43 @@ rule func_type() -> Type
     }
 
 rule primitive_type() -> Type
-    = variant_type()
-    / record_type()
+    = record_type()
     / INT() { Type::Int }
     / BOOL() { Type::Bool }
     / CHAR() { Type::Char }
     / UNIT_T() { Type::Unit }
-    / start:position!() name:ident() end:position!() { Type::Var(name, Position {start:start, end: end}) }
+    / name:ident() { Type::Var(name) }
     / LEFT_PAREN() ty:func_type() RIGHT_PAREN() { ty }
-
-rule variant_type() -> Type
-    = ENUM() LEFT_BRACE() arms:(tag:ident() COLON() ty:type_() COMMA()? { (tag, ty) })+ RIGHT_BRACE() {
-        Type::Variant(arms)
-    }
 
 rule record_type() -> Type
     = LEFT_BRACE() arms:(label:ident() COLON() ty:type_() COMMA()? { (label, ty) })* RIGHT_BRACE() {
         Type::Record(arms)
     }
 
-pub rule program() -> Program
-    = __ p:toplevel_expr()* e:expr() { (p, e) }
+pub rule program() -> Expr
+    = __ e:toplevel_expr() { e }
 
-rule toplevel_expr() -> ToplevelExpr
-    = FUNC()  name:ident() param_name:ident() COLON() param_type:type_() LEFT_BRACE() e:expr() RIGHT_BRACE() {
-        ToplevelExpr::Func(
-            Func {
-                name: name,
-                param_name: param_name,
-                param_type: param_type,
-                body: e,
-            }
-        )
+rule toplevel_expr() -> Expr
+    = FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() e:expr() RIGHT_BRACE() left:toplevel_expr() {
+        Expr::Let(
+            name,
+            box Expr::Const(Literal::Func(param_name, param_type, ret_type, box e)),
+            box left)
     }
-    / REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() e:expr() RIGHT_BRACE() {
-        ToplevelExpr::RecFunc(
-            RecFunc {
-                name: name,
-                param_name: param_name,
-                param_type: param_type,
-                ret_type: ret_type,
-                body: e,
-            }
-        )
+    / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() e:expr() RIGHT_BRACE() left:toplevel_expr() end:position!() {
+        Expr::LetRec(
+            name, Type::Func(box param_type.clone(), box ret_type.clone()),
+            box Expr::Const(Literal::Func(param_name, param_type, Some(ret_type), box e)),
+            box left,
+            Position { start: start, end: end })
     }
-    / LET() name:ident() EQUAL() init:expr() SEMICOLON() {
-        ToplevelExpr::Let(
-            Let{
-                name: name,
-                init: init,
-            }
-        )
+    / LET() name:ident() EQUAL() init:expr() SEMICOLON() left:toplevel_expr() {
+        Expr::Let(name, box init, box left)
     }
-    / TYPE() name:ident() EQUAL() typ:type_() SEMICOLON() {
-        ToplevelExpr::LetType(
-            LetType {
-                name: name,
-                typ: typ
-            })
+    / TYPE() name:ident() EQUAL() typ:type_() SEMICOLON() left:toplevel_expr() {
+        Expr::LetType(name, typ, box left)
     }
+    / expr()
 
 rule expr() -> Expr
     = LET() name:ident() EQUAL() e1:inner_expr() SEMICOLON() e2:expr() {
@@ -88,36 +62,18 @@ rule expr() -> Expr
     }
     / es:(inner_expr() ** SEMICOLON()) {
         let mut es = es;
-        if es.len() == 1 {
-            es.pop().unwrap()
-        } else {
-            Expr::Sequence(es)
-        }
+        let head = es.pop().unwrap();
+        es.into_iter().rev().fold(head, |acc, e| Expr::Let(Ident::new("<dummy-sequence>"), box e, box acc))
     }
 
 rule inner_expr() -> Expr
     = if_expr()
-    / match_expr()
+    / binop_expr()
 
 
 rule if_expr() -> Expr
     = start:position!() IF() cond:expr() LEFT_BRACE() e1:expr() RIGHT_BRACE() ELSE() LEFT_BRACE() e2:expr() RIGHT_BRACE() end:position!() {
         Expr::If(box cond, box e1, box e2, Position {start: start, end: end})
-    }
-
-rule match_expr() -> Expr
-    = start:position!() MATCH() e:expr() LEFT_BRACE() arms:match_arm()* RIGHT_BRACE() end:position!() {
-        Expr::PatternMatch(box e, arms, Position {start: start, end: end})
-    }
-    / binop_expr()
-
-rule match_arm() -> PatternMatchArm
-    = label:ident() name:ident() FAT_ARROW() e:expr() COMMA()? {
-        PatternMatchArm {
-            label:label,
-            name: name,
-            body: e
-        }
     }
 
 rule binop_expr() -> Expr = precedence! {
@@ -147,10 +103,9 @@ rule field_access_expr() -> Expr
     }
 
 rule factor_expr() -> Expr
-    = lambda_expr()
+    = func_expr()
     / record_expr()
     / tuple_expr()
-    / variant_expr()
     / number_expr()
     / boolean_expr()
     / unit_expr()
@@ -159,9 +114,9 @@ rule factor_expr() -> Expr
     / var_expr()
     / LEFT_PAREN() e:expr() RIGHT_PAREN() { e }
 
-rule lambda_expr() -> Expr
-    = FUNC() name:ident() COLON() typ:type_() FAT_ARROW() body:expr() {
-        Expr::Lambda(name, typ, box body)
+rule func_expr() -> Expr
+    = FUNC() name:ident() COLON() typ:type_() ret_type:(COLON() typ:type_() { typ })? FAT_ARROW() body:expr() {
+        Expr::Const(Literal::Func(name, typ, ret_type, box body))
     }
 
 rule record_expr() -> Expr
@@ -172,15 +127,10 @@ rule record_expr() -> Expr
 rule tuple_expr() -> Expr
     = LEFT_PAREN() es:(expr() ** COMMA()) RIGHT_PAREN() {?
         if es.len() >= 2 {
-            Ok(Expr::Const(Literal::Tuple(es)))
+            Ok(Expr::Const(Literal::Record(es.into_iter().enumerate().map(|(n, e)| (Ident::new(&n.to_string()), e)).collect())))
         } else {
             Err("length of tuple must be greater than 1")
         }
-    }
-
-rule variant_expr() -> Expr
-    = start:position!() typ:type_() DOUBLE_COLON() label:ident() LEFT_PAREN() e:expr() RIGHT_PAREN() end:position!() {
-        Expr::Const(Literal::Variant(label, box e, typ, Position {start: start, end: end}))
     }
 
 rule number_expr() -> Expr
