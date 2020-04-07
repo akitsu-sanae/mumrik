@@ -32,18 +32,22 @@ pub rule program() -> Expr
     = __ e:toplevel_expr() { e }
 
 rule toplevel_expr() -> Expr
-    = FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() e:expr() RIGHT_BRACE() left:toplevel_expr() {
+    = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() e:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::Let(
             name,
-            box Expr::Const(Literal::Func(param_name, param_type, ret_type, box e)),
+            box Expr::Const(Literal::Func(
+                    param_name,
+                    param_type,
+                    ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())),
+                    box e,
+                    Position {start: start, end: end})),
             box left)
     }
-    / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() e:expr() RIGHT_BRACE() left:toplevel_expr() end:position!() {
+    / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() e:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::LetRec(
             name, Type::Func(box param_type.clone(), box ret_type.clone()),
-            box Expr::Const(Literal::Func(param_name, param_type, Some(ret_type), box e)),
-            box left,
-            Position { start: start, end: end })
+            box Expr::Const(Literal::Func(param_name, param_type, ret_type, box e, Position {start: start, end: end})),
+            box left)
     }
     / LET() name:ident() EQUAL() init:expr() SEMICOLON() left:toplevel_expr() {
         Expr::Let(name, box init, box left)
@@ -115,8 +119,8 @@ rule factor_expr() -> Expr
     / LEFT_PAREN() e:expr() RIGHT_PAREN() { e }
 
 rule func_expr() -> Expr
-    = FUNC() name:ident() COLON() typ:type_() ret_type:(COLON() typ:type_() { typ })? FAT_ARROW() body:expr() {
-        Expr::Const(Literal::Func(name, typ, ret_type, box body))
+    = start:position!() FUNC() name:ident() COLON() typ:type_() ret_type:(COLON() typ:type_() { typ })? FAT_ARROW() body:expr() end:position!() {
+        Expr::Const(Literal::Func(name, typ, ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())), box body, Position {start: start, end: end}))
     }
 
 rule record_expr() -> Expr

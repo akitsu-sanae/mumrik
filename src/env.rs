@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 pub struct Env<T: Clone + Debug> {
-    binding: Vec<(Ident, T)>,
+    pub binding: Vec<(Ident, T)>,
 }
 
 impl<T: Clone + Debug> Env<T> {
@@ -17,11 +17,10 @@ impl<T: Clone + Debug> Env<T> {
         new_context
     }
 
-    pub fn lookup(&self, name: &Ident) -> Result<T, String> {
-        let res = self.binding.iter().find(|e| &e.0 == name);
-        match res {
-            Some(res) => Ok(res.clone().1),
-            None => Err(format!("unbound: {:?} in {:?}", name, self.binding)),
-        }
+    pub fn lookup(&self, name: &Ident) -> Option<T> {
+        self.binding
+            .iter()
+            .find(|e| &e.0 == name)
+            .map(|res| res.clone().1)
     }
 }

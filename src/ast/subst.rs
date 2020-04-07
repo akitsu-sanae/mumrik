@@ -24,18 +24,32 @@ impl Expr {
             expr,
             |e, name, expr| match &e {
                 Expr::Var(ref name_, _) if name == name_ => Some(expr.clone()),
-                Expr::Let(ref name_, _, _) | Expr::LetRec(ref name_, _, _, _, _)
-                    if name == name_ =>
-                {
+                Expr::Let(ref name_, _, _) | Expr::LetRec(ref name_, _, _, _) if name == name_ => {
                     Some(e)
                 }
                 _ => None,
             },
             |lit, name, _| match &lit {
-                Literal::Func(ref name_, _, _, _) if name == name_ => Some(lit),
+                Literal::Func(ref name_, _, _, _, _) if name == name_ => Some(lit),
                 _ => None,
             },
             |_, _, _| None,
+        )
+    }
+}
+
+impl Type {
+    pub fn subst_type(self, name: &Ident, typ: &Type) -> Type {
+        aux_type(
+            self,
+            name,
+            typ,
+            |_, _, _| None,
+            |_, _, _| None,
+            |typ_, name, typ| match typ_ {
+                Type::Var(name_) if name == &name_ => Some(typ.clone()),
+                _ => None,
+            },
         )
     }
 }
@@ -64,12 +78,11 @@ fn aux_expr<T>(
             box aux_expr(e1, name, v, ef, lf, tf),
             box aux_expr(e2, name, v, ef, lf, tf),
         ),
-        Expr::LetRec(name_, typ, box e1, box e2, pos) => Expr::LetRec(
+        Expr::LetRec(name_, typ, box e1, box e2) => Expr::LetRec(
             name_,
             typ,
             box aux_expr(e1, name, v, ef, lf, tf),
             box aux_expr(e2, name, v, ef, lf, tf),
-            pos,
         ),
         Expr::LetType(name_, typ, box e) => Expr::LetType(
             name_,
@@ -107,17 +120,12 @@ fn aux_literal<T>(
         return lit;
     }
     match lit {
-        Literal::Func(param_name, param_type, None, box e) => Literal::Func(
+        Literal::Func(param_name, param_type, ret_type, box e, pos) => Literal::Func(
             param_name,
             aux_type(param_type, name, v, ef, lf, tf),
-            None,
+            aux_type(ret_type, name, v, ef, lf, tf),
             box aux_expr(e, name, v, ef, lf, tf),
-        ),
-        Literal::Func(param_name, param_type, Some(ret_type), box e) => Literal::Func(
-            param_name,
-            aux_type(param_type, name, v, ef, lf, tf),
-            Some(aux_type(ret_type, name, v, ef, lf, tf)),
-            box aux_expr(e, name, v, ef, lf, tf),
+            pos,
         ),
         Literal::Record(fields) => Literal::Record(
             fields

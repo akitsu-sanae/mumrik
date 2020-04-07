@@ -1,5 +1,6 @@
 use ident::Ident;
 
+mod is_occurs;
 mod subst;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -14,7 +15,7 @@ pub enum Expr {
     Var(Ident, Position),
     Apply(Box<Expr>, Box<Expr>, Position),
     Let(Ident, Box<Expr>, Box<Expr>),
-    LetRec(Ident, Type, Box<Expr>, Box<Expr>, Position),
+    LetRec(Ident, Type, Box<Expr>, Box<Expr>),
     LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
@@ -24,7 +25,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-    Func(Ident, Type, Option<Type>, Box<Expr>),
+    Func(Ident, Type, Type, Box<Expr>, Position),
     Number(i32),
     Bool(bool),
     Char(char),

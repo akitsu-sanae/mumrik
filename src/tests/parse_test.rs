@@ -17,16 +17,17 @@ fn primitive_literal() {
 #[test]
 fn apply() {
     assert_eq!(
-        program("(func x:Int => x) 1"),
+        program("(func x:Int :Int => x) 1"),
         Ok(Apply(
             box Const(Func(
                 Ident::new("x"),
                 Type::Int,
-                None,
-                box Var(Ident::new("x"), Position { start: 15, end: 16 }),
+                Type::Int,
+                box Var(Ident::new("x"), Position { start: 20, end: 21 }),
+                Position { start: 1, end: 21 }
             )),
             box Const(Number(1)),
-            Position { start: 0, end: 19 }
+            Position { start: 0, end: 24 }
         ))
     );
 }
@@ -145,7 +146,7 @@ fn func() {
     assert_eq!(
         program(
             r#"
-func f a:Int {
+func f a:Int :Int {
     a + 12
 }
 f 13
@@ -156,18 +157,19 @@ f 13
             box Const(Func(
                 Ident::new("a"),
                 Type::Int,
-                None,
+                Type::Int,
                 box BinOp(
                     ast::BinOp::Add,
-                    box Var(Ident::new("a"), Position { start: 20, end: 22 }),
+                    box Var(Ident::new("a"), Position { start: 25, end: 27 }),
                     box Const(Number(12)),
-                    Position { start: 22, end: 24 }
-                )
+                    Position { start: 27, end: 29 }
+                ),
+                Position { start: 1, end: 34 },
             )),
             box Apply(
-                box Var(Ident::new("f"), Position { start: 29, end: 31 }),
+                box Var(Ident::new("f"), Position { start: 34, end: 36 }),
                 box Const(Number(13)),
-                Position { start: 29, end: 34 }
+                Position { start: 34, end: 39 }
             )
         ))
     );
@@ -194,7 +196,7 @@ fib 3
             box Const(Func(
                 Ident::new("x"),
                 Type::Int,
-                Some(Type::Int),
+                Type::Int,
                 box If(
                     box BinOp(
                         ast::BinOp::Lt,
@@ -231,7 +233,8 @@ fib 3
                         start: 31,
                         end: 101
                     }
-                )
+                ),
+                Position { start: 1, end: 103 }
             )),
             box Apply(
                 box Var(
@@ -247,7 +250,6 @@ fib 3
                     end: 109
                 }
             ),
-            Position { start: 1, end: 109 }
         ))
     );
 }
