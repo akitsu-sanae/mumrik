@@ -8,7 +8,7 @@ mod ast;
 mod typecheck;
 // mod codegen;
 mod env;
-// mod eval;
+mod eval;
 mod ident;
 mod parser;
 
@@ -55,10 +55,8 @@ fn exec(src: &str) {
     match parser::program(src) {
         Ok(expr) => match typecheck::check(expr) {
             Ok((expr, typ)) => {
-                println!("{:?}: {:?}", expr, typ);
-                /* let value = eval::expr(&expr);
-                println!("{:?}", value); */
-                // codegen::codegen(expr, "output.ll");
+                let value = eval::expr(expr);
+                println!("{:?}: {:?}", value, typ);
             }
             Err(err) => match err {
                 typecheck::Error::RecursiveOccurrence { pos, var, typ } => {
