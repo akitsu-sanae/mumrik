@@ -19,13 +19,13 @@ fn apply() {
     assert_eq!(
         program("(func x:Int :Int => x) 1"),
         Ok(Apply(
-            box Const(Func(
-                Ident::new("x"),
-                Type::Int,
-                Type::Int,
-                box Var(Ident::new("x"), Position { start: 20, end: 21 }),
-                Position { start: 1, end: 21 }
-            )),
+            box Const(Func {
+                param_name: Ident::new("x"),
+                param_type: Type::Int,
+                ret_type: Type::Int,
+                body: box Var(Ident::new("x"), Position { start: 20, end: 21 }),
+                pos: Position { start: 1, end: 21 }
+            }),
             box Const(Number(1)),
             Position { start: 0, end: 24 }
         ))
@@ -154,18 +154,18 @@ f 13
         ),
         Ok(Let(
             Ident::new("f"),
-            box Const(Func(
-                Ident::new("a"),
-                Type::Int,
-                Type::Int,
-                box BinOp(
+            box Const(Func {
+                param_name: Ident::new("a"),
+                param_type: Type::Int,
+                ret_type: Type::Int,
+                body: box BinOp(
                     ast::BinOp::Add,
                     box Var(Ident::new("a"), Position { start: 25, end: 27 }),
                     box Const(Number(12)),
                     Position { start: 27, end: 29 }
                 ),
-                Position { start: 1, end: 34 },
-            )),
+                pos: Position { start: 1, end: 34 },
+            }),
             box Apply(
                 box Var(Ident::new("f"), Position { start: 34, end: 36 }),
                 box Const(Number(13)),
@@ -193,11 +193,11 @@ fib 3
         Ok(LetRec(
             Ident::new("fib"),
             Type::Func(box Type::Int, box Type::Int),
-            box Const(Func(
-                Ident::new("x"),
-                Type::Int,
-                Type::Int,
-                box If(
+            box Const(Func {
+                param_name: Ident::new("x"),
+                param_type: Type::Int,
+                ret_type: Type::Int,
+                body: box If(
                     box BinOp(
                         ast::BinOp::Lt,
                         box Var(Ident::new("x"), Position { start: 34, end: 36 }),
@@ -234,8 +234,8 @@ fib 3
                         end: 101
                     }
                 ),
-                Position { start: 1, end: 103 }
-            )),
+                pos: Position { start: 1, end: 103 }
+            }),
             box Apply(
                 box Var(
                     Ident::new("fib"),
@@ -250,6 +250,7 @@ fib 3
                     end: 109
                 }
             ),
+            Position { start: 1, end: 103 }
         ))
     );
 }

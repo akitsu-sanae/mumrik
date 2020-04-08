@@ -8,24 +8,23 @@ use self::subst::Subst;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
-    UnmatchType(UnmatchTypeError),
-    UnboundVariable(UnboundVariableError),
+    RecursiveOccurrence {
+        pos: Position,
+        var: Ident,
+        typ: Type,
+    },
+    UnmatchType {
+        pos: Position,
+        expected: Type,
+        actual: Type,
+    },
+    UnboundVariable {
+        pos: Position,
+        name: Ident,
+    },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnmatchTypeError {
-    pub pos: Position,
-    pub expected: Type,
-    pub actual: Type,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnboundVariableError {
-    pub pos: Position,
-    pub name: Ident,
-}
-
-fn unify(mut queue: VecDeque<(Type, Type)>, pos: Position) -> Result<Subst, Error> {
+fn unify(mut queue: VecDeque<(Type, Type)>, pos: &Position) -> Result<Subst, Error> {
     let mut subst = Subst::new();
     loop {
         if let Some((typ1, typ2)) = queue.pop_front() {
@@ -39,19 +38,19 @@ fn unify(mut queue: VecDeque<(Type, Type)>, pos: Position) -> Result<Subst, Erro
                     fields1.sort_by(|a, b| a.0.cmp(&b.0));
                     fields2.sort_by(|a, b| a.0.cmp(&b.0));
                     if fields1.len() != fields2.len() {
-                        return Err(Error::UnmatchType(UnmatchTypeError {
-                            pos: pos,
+                        return Err(Error::UnmatchType {
+                            pos: pos.clone(),
                             expected: Type::Record(fields1),
                             actual: Type::Record(fields2),
-                        }));
+                        });
                     }
                     for (ref field1, ref field2) in fields1.iter().zip(fields2.iter()) {
                         if field1.0 != field2.0 {
-                            return Err(Error::UnmatchType(UnmatchTypeError {
-                                pos: pos,
+                            return Err(Error::UnmatchType {
+                                pos: pos.clone(),
                                 expected: field1.1.clone(),
                                 actual: field2.1.clone(),
-                            }));
+                            });
                         }
                     }
                     for (field1, field2) in fields1.into_iter().zip(fields2.into_iter()) {
@@ -75,17 +74,21 @@ fn unify(mut queue: VecDeque<(Type, Type)>, pos: Position) -> Result<Subst, Erro
                             .collect(),
                     );
                     if typ.is_occurs(&name) {
-                        todo!() // return error
+                        return Err(Error::RecursiveOccurrence {
+                            pos: pos.clone(),
+                            var: name,
+                            typ: typ,
+                        });
                     } else if !subst.0.iter().any(|(name_, _)| name_ == &name) {
                         subst.0.insert(name, typ);
                     }
                 }
                 (typ1, typ2) => {
-                    return Err(Error::UnmatchType(UnmatchTypeError {
-                        pos: pos,
+                    return Err(Error::UnmatchType {
+                        pos: pos.clone(),
                         expected: typ1,
                         actual: typ2,
-                    }))
+                    })
                 }
             }
         } else {
@@ -96,61 +99,115 @@ fn unify(mut queue: VecDeque<(Type, Type)>, pos: Position) -> Result<Subst, Erro
 }
 
 pub fn check(e: Expr) -> Result<(Expr, Type), Error> {
-    let (_, typ, subst) = check_expr(&e, &Env::new())?;
+    let (typ, subst) = check_expr(&e, &Env::new())?;
     let e = subst.apply_expr(e);
     Ok((e, typ))
 }
 
-fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Env<Type>, Type, Subst), Error> {
+fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
     match e {
         Expr::Const(ref lit) => Ok(check_literal(lit, env)?),
-        Expr::Var(ref name, ref _pos) => {
-            if let Some(typ) = env.lookup(&name) {
-                Ok((env.clone(), typ, Subst::new()))
+        Expr::Var(ref name, ref pos) => {
+            if let Some(typ) = env.lookup(name) {
+                Ok((typ, Subst::new()))
             } else {
-                let type_var = Type::Var(Ident::fresh());
-                let env = env.add(name.clone(), type_var.clone());
-                Ok((env, type_var, Subst::new()))
+                Err(Error::UnboundVariable {
+                    pos: pos.clone(),
+                    name: name.clone(),
+                })
             }
         }
         Expr::Apply(box ref e1, box ref e2, ref pos) => {
-            let (env, ty1, subst1) = check_expr(e1, env)?;
-            let (env, ty2, subst2) = check_expr(e2, &env)?;
+            let (ty1, subst1) = check_expr(e1, env)?;
+            let (ty2, subst2) = check_expr(e2, env)?;
             let ret_type = Type::Var(Ident::fresh());
             let subst3 = unify(
                 VecDeque::from(vec![(ty1, Type::Func(box ty2, box ret_type.clone()))]),
-                pos.clone(),
+                pos,
             )?;
-            let ret_type = subst3.apply_type(ret_type);
-            let env = subst3.apply_env(env);
             let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
-            Ok((env, ret_type, subst))
+            let ret_type = subst.apply_type(ret_type);
+            Ok((ret_type, subst))
         }
-        _ => todo!(),
+        Expr::Let(ref name, box ref e1, box ref e2) => {
+            let (ty1, subst1) = check_expr(e1, env)?;
+            let env = env.add(name.clone(), ty1);
+            let (ty2, subst2) = check_expr(e2, &env)?;
+            let subst = Subst::compose(subst1, subst2);
+            let ty2 = subst.apply_type(ty2);
+            Ok((ty2, subst))
+        }
+        Expr::LetRec(ref name, ref ty, box ref e1, box ref e2, ref pos) => {
+            let env = env.add(name.clone(), ty.clone());
+            let (ty1, subst1) = check_expr(e1, &env)?;
+            let subst2 = unify(VecDeque::from(vec![(ty.clone(), ty1)]), pos)?;
+            let (ty2, subst3) = check_expr(e2, &env)?;
+            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
+            let ty2 = subst.apply_type(ty2);
+            Ok((ty2, subst))
+        }
+        Expr::LetType(ref name, ref typ, box ref e) => {
+            let env = env.add(name.clone(), typ.clone());
+            check_expr(e, &env)
+        }
+        Expr::If(box ref cond, box ref e1, box ref e2, ref pos) => {
+            let (cond_ty, subst1) = check_expr(cond, env)?;
+            let (ty1, subst2) = check_expr(e1, env)?;
+            let (ty2, subst3) = check_expr(e2, env)?;
+            let subst_if = unify(
+                VecDeque::from(vec![(cond_ty, Type::Bool), (ty1.clone(), ty2)]),
+                pos,
+            )?;
+            let subst = Subst::compose(
+                subst1,
+                Subst::compose(subst2, Subst::compose(subst3, subst_if)),
+            );
+            let ty = subst.apply_type(ty1);
+            Ok((ty, subst))
+        }
+        Expr::BinOp(ref op, box ref e1, box ref e2, ref pos) => {
+            let (ty1, subst1) = check_expr(e1, env)?;
+            let (ty2, subst2) = check_expr(e2, env)?;
+            let subst_eq = unify(VecDeque::from(vec![(ty1.clone(), ty2)]), pos)?;
+            let subst = Subst::compose(subst_eq, Subst::compose(subst1, subst2));
+            match op {
+                BinOp::Add | BinOp::Sub | BinOp::Mult | BinOp::Div => {
+                    let subst_ = unify(VecDeque::from(vec![(ty1, Type::Int)]), pos)?;
+                    let subst = Subst::compose(subst, subst_);
+                    Ok((Type::Int, subst))
+                }
+                BinOp::Eq | BinOp::Neq | BinOp::Lt | BinOp::Gt => Ok((Type::Bool, subst)),
+            }
+        }
+        Expr::FieldAccess(_, _, _) => todo!(),
+        Expr::Println(box ref e) => {
+            let (_, subst) = check_expr(e, env)?;
+            Ok((Type::Unit, subst))
+        }
     }
 }
 
-fn check_literal(lit: &Literal, env: &Env<Type>) -> Result<(Env<Type>, Type, Subst), Error> {
+fn check_literal(lit: &Literal, env: &Env<Type>) -> Result<(Type, Subst), Error> {
     match lit {
-        Literal::Func(ref param_name, ref param_type, ref ret_type, box ref body, ref pos) => {
+        Literal::Func {
+            ref param_name,
+            ref param_type,
+            ref ret_type,
+            box ref body,
+            ref pos,
+        } => {
             let env = env.add(param_name.clone(), param_type.clone());
-            let (env, body_ty, subst1) = check_expr(body, &env)?;
-            let subst2 = unify(
-                VecDeque::from(vec![(ret_type.clone(), body_ty)]),
-                pos.clone(),
-            )?;
-            let param_type = subst2.apply_type(param_type.clone());
-            let ret_type = subst2.apply_type(ret_type.clone());
-            Ok((
-                env,
-                Type::Func(box param_type, box ret_type),
-                Subst::compose(subst1, subst2),
-            ))
+            let (body_ty, subst1) = check_expr(body, &env)?;
+            let subst2 = unify(VecDeque::from(vec![(ret_type.clone(), body_ty)]), pos)?;
+            let subst = Subst::compose(subst1, subst2);
+            let param_type = subst.apply_type(param_type.clone());
+            let ret_type = subst.apply_type(ret_type.clone());
+            Ok((Type::Func(box param_type, box ret_type), subst))
         }
-        Literal::Number(_) => Ok((Env::new(), Type::Int, Subst::new())),
-        Literal::Bool(_) => Ok((Env::new(), Type::Bool, Subst::new())),
-        Literal::Char(_) => Ok((Env::new(), Type::Char, Subst::new())),
-        Literal::Unit => Ok((Env::new(), Type::Unit, Subst::new())),
+        Literal::Number(_) => Ok((Type::Int, Subst::new())),
+        Literal::Bool(_) => Ok((Type::Bool, Subst::new())),
+        Literal::Char(_) => Ok((Type::Char, Subst::new())),
+        Literal::Unit => Ok((Type::Unit, Subst::new())),
         Literal::Record(_fields) => todo!(),
     }
 }

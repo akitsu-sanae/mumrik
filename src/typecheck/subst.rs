@@ -22,12 +22,14 @@ impl Subst {
             .fold(e, |acc, (ref name, ref typ)| acc.subst_type(name, typ))
     }
 
-    pub fn apply_env(&self, _env: Env<Type>) -> Env<Type> {
-        todo!()
-        /*
-        self.0.iter().fold(env, |acc, &(ref name, ref typ)| {
-            let env = env.bindings.into_iter().map().collect();
-        }) */
+    pub fn apply_env(&self, env: Env<Type>) -> Env<Type> {
+        self.0.iter().fold(env, |acc, (ref name, ref typ)| {
+            Env(acc
+                .0
+                .into_iter()
+                .map(|(name_, typ_)| (name_, typ_.subst_type(name, typ)))
+                .collect())
+        })
     }
 
     pub fn compose(subst1: Subst, subst2: Subst) -> Subst {

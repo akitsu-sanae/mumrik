@@ -24,13 +24,21 @@ impl Expr {
             expr,
             |e, name, expr| match &e {
                 Expr::Var(ref name_, _) if name == name_ => Some(expr.clone()),
-                Expr::Let(ref name_, _, _) | Expr::LetRec(ref name_, _, _, _) if name == name_ => {
+                Expr::Let(ref name_, _, _) | Expr::LetRec(ref name_, _, _, _, _)
+                    if name == name_ =>
+                {
                     Some(e)
                 }
                 _ => None,
             },
             |lit, name, _| match &lit {
-                Literal::Func(ref name_, _, _, _, _) if name == name_ => Some(lit),
+                Literal::Func {
+                    ref param_name,
+                    param_type: _,
+                    ret_type: _,
+                    body: _,
+                    pos: _,
+                } if name == param_name => Some(lit),
                 _ => None,
             },
             |_, _, _| None,
@@ -78,11 +86,12 @@ fn aux_expr<T>(
             box aux_expr(e1, name, v, ef, lf, tf),
             box aux_expr(e2, name, v, ef, lf, tf),
         ),
-        Expr::LetRec(name_, typ, box e1, box e2) => Expr::LetRec(
+        Expr::LetRec(name_, typ, box e1, box e2, pos) => Expr::LetRec(
             name_,
             typ,
             box aux_expr(e1, name, v, ef, lf, tf),
             box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
         ),
         Expr::LetType(name_, typ, box e) => Expr::LetType(
             name_,
@@ -120,13 +129,19 @@ fn aux_literal<T>(
         return lit;
     }
     match lit {
-        Literal::Func(param_name, param_type, ret_type, box e, pos) => Literal::Func(
+        Literal::Func {
             param_name,
-            aux_type(param_type, name, v, ef, lf, tf),
-            aux_type(ret_type, name, v, ef, lf, tf),
-            box aux_expr(e, name, v, ef, lf, tf),
+            param_type,
+            ret_type,
+            box body,
             pos,
-        ),
+        } => Literal::Func {
+            param_name: param_name,
+            param_type: aux_type(param_type, name, v, ef, lf, tf),
+            ret_type: aux_type(ret_type, name, v, ef, lf, tf),
+            body: box aux_expr(body, name, v, ef, lf, tf),
+            pos: pos,
+        },
         Literal::Record(fields) => Literal::Record(
             fields
                 .into_iter()

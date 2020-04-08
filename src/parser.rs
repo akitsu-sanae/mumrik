@@ -32,22 +32,30 @@ pub rule program() -> Expr
     = __ e:toplevel_expr() { e }
 
 rule toplevel_expr() -> Expr
-    = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() e:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+    = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::Let(
             name,
-            box Expr::Const(Literal::Func(
-                    param_name,
-                    param_type,
-                    ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())),
-                    box e,
-                    Position {start: start, end: end})),
+            box Expr::Const(Literal::Func {
+                param_name: param_name,
+                param_type: param_type,
+                ret_type: ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())),
+                body: box body,
+                pos: Position {start: start, end: end}
+            }),
             box left)
     }
-    / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() e:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+    / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::LetRec(
             name, Type::Func(box param_type.clone(), box ret_type.clone()),
-            box Expr::Const(Literal::Func(param_name, param_type, ret_type, box e, Position {start: start, end: end})),
-            box left)
+            box Expr::Const(Literal::Func {
+                param_name: param_name,
+                param_type: param_type,
+                ret_type: ret_type,
+                body: box body,
+                pos: Position {start: start, end: end}
+            }),
+            box left,
+            Position {start: start, end: end})
     }
     / LET() name:ident() EQUAL() init:expr() SEMICOLON() left:toplevel_expr() {
         Expr::Let(name, box init, box left)
@@ -64,10 +72,13 @@ rule expr() -> Expr
     / TYPE() name:ident() EQUAL() typ:type_() SEMICOLON() e:expr() {
         Expr::LetType(name, typ, box e)
     }
-    / es:(inner_expr() ** SEMICOLON()) {
+    / es:(inner_expr() ** SEMICOLON()) {?
         let mut es = es;
-        let head = es.pop().unwrap();
-        es.into_iter().rev().fold(head, |acc, e| Expr::Let(Ident::new("<dummy-sequence>"), box e, box acc))
+        if let Some(head) = es.pop() {
+            Ok(es.into_iter().rev().fold(head, |acc, e| Expr::Let(Ident::new("<dummy-sequence>"), box e, box acc)))
+        } else {
+            Err("no expr found")
+        }
     }
 
 rule inner_expr() -> Expr
@@ -120,7 +131,13 @@ rule factor_expr() -> Expr
 
 rule func_expr() -> Expr
     = start:position!() FUNC() name:ident() COLON() typ:type_() ret_type:(COLON() typ:type_() { typ })? FAT_ARROW() body:expr() end:position!() {
-        Expr::Const(Literal::Func(name, typ, ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())), box body, Position {start: start, end: end}))
+        Expr::Const(Literal::Func{
+            param_name: name,
+            param_type: typ,
+            ret_type: ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())),
+            body: box body,
+            pos: Position {start: start, end: end}
+        })
     }
 
 rule record_expr() -> Expr

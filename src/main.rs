@@ -61,14 +61,24 @@ fn exec(src: &str) {
                 // codegen::codegen(expr, "output.ll");
             }
             Err(err) => match err {
-                typecheck::Error::UnmatchType(err) => {
-                    println!(
-                        "at {:?}, expected is {:?} but actual is {:?}",
-                        err.pos, err.expected, err.actual
+                typecheck::Error::RecursiveOccurrence { pos, var, typ } => {
+                    eprintln!(
+                        "at {:?}, type variable {:?} occurs recursively in {:?}",
+                        pos, var, typ
                     );
                 }
-                typecheck::Error::UnboundVariable(err) => {
-                    println!("at {:?}, unbound variable {:?}", err.pos, err.name);
+                typecheck::Error::UnmatchType {
+                    pos,
+                    expected,
+                    actual,
+                } => {
+                    eprintln!(
+                        "at {:?}, expected is {:?} but actual is {:?}",
+                        pos, expected, actual
+                    );
+                }
+                typecheck::Error::UnboundVariable { pos, name } => {
+                    eprintln!("at {:?}, unbound variable {:?}", pos, name);
                 }
             },
         },

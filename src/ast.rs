@@ -15,7 +15,7 @@ pub enum Expr {
     Var(Ident, Position),
     Apply(Box<Expr>, Box<Expr>, Position),
     Let(Ident, Box<Expr>, Box<Expr>),
-    LetRec(Ident, Type, Box<Expr>, Box<Expr>),
+    LetRec(Ident, Type, Box<Expr>, Box<Expr>, Position),
     LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
@@ -25,7 +25,13 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-    Func(Ident, Type, Type, Box<Expr>, Position),
+    Func {
+        param_name: Ident,
+        param_type: Type,
+        ret_type: Type,
+        body: Box<Expr>,
+        pos: Position,
+    },
     Number(i32),
     Bool(bool),
     Char(char),

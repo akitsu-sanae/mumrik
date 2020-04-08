@@ -2,23 +2,21 @@ use ident::Ident;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
-pub struct Env<T: Clone + Debug> {
-    pub binding: Vec<(Ident, T)>,
-}
+pub struct Env<T: Clone + Debug>(pub Vec<(Ident, T)>);
 
 impl<T: Clone + Debug> Env<T> {
     pub fn new() -> Self {
-        Env { binding: vec![] }
+        Env(vec![])
     }
 
     pub fn add(&self, name: Ident, v: T) -> Self {
-        let mut new_context = self.clone();
-        new_context.binding.insert(0, (name, v));
-        new_context
+        let mut new_env = self.clone();
+        new_env.0.push((name, v));
+        new_env
     }
 
     pub fn lookup(&self, name: &Ident) -> Option<T> {
-        self.binding
+        self.0
             .iter()
             .find(|e| &e.0 == name)
             .map(|res| res.clone().1)
