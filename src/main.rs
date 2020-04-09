@@ -4,92 +4,98 @@
 extern crate nf2llvmir as nf;
 extern crate peg;
 
+mod args;
 mod ast;
-mod typecheck;
-// mod codegen;
+mod codegen;
 mod env;
 mod eval;
 mod ident;
 mod parser;
+mod typecheck;
+mod util;
 
 #[cfg(test)]
 mod tests;
 
-use std::fs::File;
-use std::io::Read;
-
 fn main() {
-    let mut src = String::new();
-    let filename = std::env::args().nth(1).expect("filename is required");
-    let f = File::open(filename.clone()).and_then(|mut f| f.read_to_string(&mut src));
-    if f.is_ok() {
-        exec(&src)
-    } else {
-        use std::process;
-        eprintln!("can not load file: {}", filename);
-        process::abort();
-    }
-}
+    let args = args::Args::new();
 
-struct Expected(Vec<String>);
-
-impl Expected {
-    pub fn from(set: peg::error::ExpectedSet) -> Expected {
-        Expected(
-            set.tokens()
-                .filter(|s| *s != "\' \' | \'\\t\' | \'\\r\' | \'\\n\'")
-                .map(|s| s.to_string())
-                .collect(),
-        )
-    }
-}
-
-use std::fmt;
-impl fmt::Display for Expected {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.join(", "))
-    }
-}
-
-fn exec(src: &str) {
-    match parser::program(src) {
+    match parser::program(&args.input) {
         Ok(expr) => match typecheck::check(expr) {
             Ok((expr, typ)) => {
-                let value = eval::expr(expr);
-                println!("{:?}: {:?}", value, typ);
+                if let Some(output) = args.output {
+                    codegen::codegen(expr, output.as_str())
+                } else {
+                    println!("{}: {}", eval::expr(expr), typ);
+                }
             }
             Err(err) => match err {
                 typecheck::Error::RecursiveOccurrence { pos, var, typ } => {
+                    let start = util::pos_to_location(&args.input, pos.start);
+                    let end = util::pos_to_location(&args.input, pos.end);
                     eprintln!(
-                        "at {:?}, type variable {:?} occurs recursively in {:?}",
-                        pos, var, typ
+                        "\u{001B}[31m[type error]\u{001B}[39m at ({}, {})-({}, {})",
+                        start.0, start.1, end.0, end.1
                     );
+                    let lines: Vec<_> = args.input.split('\n').collect();
+                    eprintln!("```");
+                    for line_i in start.0..end.0 {
+                        eprintln!("{}", lines[line_i - 1]);
+                    }
+                    eprintln!("```");
+                    eprintln!("type variable {} occurs recursively in {}", var, typ);
                 }
                 typecheck::Error::UnmatchType {
                     pos,
                     expected,
                     actual,
                 } => {
+                    let start = util::pos_to_location(&args.input, pos.start);
+                    let end = util::pos_to_location(&args.input, pos.end);
                     eprintln!(
-                        "at {:?}, expected is {:?} but actual is {:?}",
-                        pos, expected, actual
+                        "\u{001B}[31m[type error]\u{001B}[39m at ({}, {})-({}, {})",
+                        start.0, start.1, end.0, end.1
+                    );
+                    let lines: Vec<_> = args.input.split('\n').collect();
+                    eprintln!("```");
+                    for line_i in start.0..end.0 {
+                        eprintln!("{}", lines[line_i]);
+                    }
+                    eprintln!("```");
+                    eprintln!(
+                        "expected type is {}, but actual type is {}",
+                        expected, actual
                     );
                 }
                 typecheck::Error::UnboundVariable { pos, name } => {
-                    eprintln!("at {:?}, unbound variable {:?}", pos, name);
+                    let (line, column_start) = util::pos_to_location(&args.input, pos.start);
+                    let (_, column_end) = util::pos_to_location(&args.input, pos.end);
+                    eprintln!(
+                        "\u{001B}[31m[type error]\u{001B}[39m at line {}, unbound variable: {}",
+                        line, name
+                    );
+                    let lines: Vec<_> = args.input.split('\n').collect();
+                    eprintln!("> {}", lines[line]);
+                    eprintln!(
+                        "  {}{}",
+                        " ".repeat(column_start - 1),
+                        "^".repeat(column_end - column_start)
+                    );
                 }
             },
         },
         Err(err) => {
-            let lines: Vec<_> = src.split('\n').collect();
-            println!("{}", lines[err.location.line - 1]);
-            println!("\u{001B}[31m{}^", " ".repeat(err.location.column - 1));
-            println!(
-                "syntax error at line:{} column: {}\nexpected: {}\u{001B}[39m",
-                err.location.line,
-                err.location.column,
-                Expected::from(err.expected)
-            )
+            let lines: Vec<_> = args.input.split('\n').collect();
+            let msg = format!(
+                "{}\n{}\u{001B}[31m^\u{001B}[39m\nexpected: {}",
+                lines[err.location.line - 1],
+                " ".repeat(err.location.column - 1),
+                parser::Expected::from(err.expected),
+            );
+            eprintln!(
+                "\u{001B}[31m[syntax error]\u{001B}[39m at ({}, {})\n{}",
+                err.location.line, err.location.column, msg
+            );
         }
     };
 }

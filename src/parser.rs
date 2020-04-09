@@ -242,3 +242,23 @@ rule __() = [' '|'\t'|'\r'|'\n']*
 });
 
 pub use self::rules::*;
+
+pub struct Expected(Vec<String>);
+
+impl Expected {
+    pub fn from(set: peg::error::ExpectedSet) -> Expected {
+        Expected(
+            set.tokens()
+                .filter(|s| *s != "\' \' | \'\\t\' | \'\\r\' | \'\\n\'")
+                .map(|s| s.to_string())
+                .collect(),
+        )
+    }
+}
+
+use std::fmt;
+impl fmt::Display for Expected {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0.join(", "))
+    }
+}

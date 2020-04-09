@@ -1,6 +1,7 @@
 use ident::Ident;
 
 mod is_occurs;
+mod printer;
 mod subst;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

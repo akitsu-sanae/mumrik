@@ -17,7 +17,6 @@ pub fn expr(e: Expr) -> Expr {
                 let e2 = expr(e2);
                 expr(body.subst_expr(&param_name, &e2))
             } else {
-                println!("{:?}", f);
                 unreachable!()
             }
         }
@@ -72,7 +71,7 @@ pub fn expr(e: Expr) -> Expr {
         }
         Expr::FieldAccess(_, _, _) => todo!(),
         Expr::Println(box e) => {
-            println!("{:?}", expr(e));
+            println!("{}", expr(e));
             Expr::Const(Literal::Unit)
         }
     }
