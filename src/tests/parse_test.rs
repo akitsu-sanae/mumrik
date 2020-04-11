@@ -38,12 +38,16 @@ fn sequence() {
         program("1; 2; 3"),
         Ok(Let(
             Ident::new("<dummy-sequence>"),
+            Type::Var(Ident::new("<fresh-1>")),
             box Const(Number(1)),
             box Let(
                 Ident::new("<dummy-sequence>"),
+                Type::Var(Ident::new("<fresh-0>")),
                 box Const(Number(2)),
-                box Const(Number(3))
-            )
+                box Const(Number(3)),
+                Position { start: 3, end: 4 }
+            ),
+            Position { start: 0, end: 1 }
         ))
     );
 }
@@ -154,6 +158,7 @@ f 13
         ),
         Ok(Let(
             Ident::new("f"),
+            Type::Func(box Type::Int, box Type::Int),
             box Const(Func {
                 param_name: Ident::new("a"),
                 param_type: Type::Int,
@@ -170,7 +175,8 @@ f 13
                 box Var(Ident::new("f"), Position { start: 34, end: 36 }),
                 box Const(Number(13)),
                 Position { start: 34, end: 39 }
-            )
+            ),
+            Position { start: 1, end: 34 }
         ))
     );
 }

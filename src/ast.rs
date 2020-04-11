@@ -15,7 +15,7 @@ pub enum Expr {
     Const(Literal),
     Var(Ident, Position),
     Apply(Box<Expr>, Box<Expr>, Position),
-    Let(Ident, Box<Expr>, Box<Expr>),
+    Let(Ident, Type, Box<Expr>, Box<Expr>, Position),
     LetRec(Ident, Type, Box<Expr>, Box<Expr>, Position),
     LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),

@@ -13,8 +13,8 @@ impl fmt::Display for Expr {
             Expr::Const(ref lit) => write!(f, "{}", lit),
             Expr::Var(ref name, _) => write!(f, "{}", name),
             Expr::Apply(box ref e1, box ref e2, _) => write!(f, "({}) ({})", e1, e2),
-            Expr::Let(ref name, box ref e1, box ref e2) => {
-                write!(f, "let {} = {}; {}", name, e1, e2)
+            Expr::Let(ref name, ref typ, box ref e1, box ref e2, _) => {
+                write!(f, "let {}: {} = {}; {}", name, typ, e1, e2)
             }
             Expr::LetRec(ref name, ref typ, box ref e1, box ref e2, _) => {
                 write!(f, "let {}: {} = {}; {}", name, typ, e1, e2)

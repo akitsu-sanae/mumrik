@@ -20,24 +20,24 @@ mod tests;
 fn main() {
     let args = args::Args::new();
 
-    match parser::program(&args.input) {
+    match parser::program(&args.input_src) {
         Ok(expr) => match typecheck::check(expr) {
             Ok((expr, typ)) => {
-                if let Some(output) = args.output {
-                    codegen::codegen(expr, output.as_str())
+                if let Some(output_filename) = args.output_filename {
+                    codegen::codegen(expr, &output_filename)
                 } else {
                     println!("{}: {}", eval::expr(expr), typ);
                 }
             }
             Err(err) => match err {
                 typecheck::Error::RecursiveOccurrence { pos, var, typ } => {
-                    let start = util::pos_to_location(&args.input, pos.start);
-                    let end = util::pos_to_location(&args.input, pos.end);
+                    let start = util::pos_to_location(&args.input_src, pos.start);
+                    let end = util::pos_to_location(&args.input_src, pos.end);
                     eprintln!(
                         "\u{001B}[31m[type error]\u{001B}[39m at ({}, {})-({}, {})",
                         start.0, start.1, end.0, end.1
                     );
-                    let lines: Vec<_> = args.input.split('\n').collect();
+                    let lines: Vec<_> = args.input_src.split('\n').collect();
                     eprintln!("```");
                     for line_i in start.0..end.0 {
                         eprintln!("{}", lines[line_i - 1]);
@@ -50,13 +50,13 @@ fn main() {
                     expected,
                     actual,
                 } => {
-                    let start = util::pos_to_location(&args.input, pos.start);
-                    let end = util::pos_to_location(&args.input, pos.end);
+                    let start = util::pos_to_location(&args.input_src, pos.start);
+                    let end = util::pos_to_location(&args.input_src, pos.end);
                     eprintln!(
                         "\u{001B}[31m[type error]\u{001B}[39m at ({}, {})-({}, {})",
                         start.0, start.1, end.0, end.1
                     );
-                    let lines: Vec<_> = args.input.split('\n').collect();
+                    let lines: Vec<_> = args.input_src.split('\n').collect();
                     eprintln!("```");
                     for line_i in start.0..end.0 {
                         eprintln!("{}", lines[line_i]);
@@ -68,13 +68,13 @@ fn main() {
                     );
                 }
                 typecheck::Error::UnboundVariable { pos, name } => {
-                    let (line, column_start) = util::pos_to_location(&args.input, pos.start);
-                    let (_, column_end) = util::pos_to_location(&args.input, pos.end);
+                    let (line, column_start) = util::pos_to_location(&args.input_src, pos.start);
+                    let (_, column_end) = util::pos_to_location(&args.input_src, pos.end);
                     eprintln!(
                         "\u{001B}[31m[type error]\u{001B}[39m at line {}, unbound variable: {}",
                         line, name
                     );
-                    let lines: Vec<_> = args.input.split('\n').collect();
+                    let lines: Vec<_> = args.input_src.split('\n').collect();
                     eprintln!("> {}", lines[line]);
                     eprintln!(
                         "  {}{}",
@@ -85,7 +85,7 @@ fn main() {
             },
         },
         Err(err) => {
-            let lines: Vec<_> = args.input.split('\n').collect();
+            let lines: Vec<_> = args.input_src.split('\n').collect();
             let msg = format!(
                 "{}\n{}\u{001B}[31m^\u{001B}[39m\nexpected: {}",
                 lines[err.location.line - 1],

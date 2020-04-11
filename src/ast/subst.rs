@@ -24,7 +24,7 @@ impl Expr {
             expr,
             |e, name, expr| match &e {
                 Expr::Var(ref name_, _) if name == name_ => Some(expr.clone()),
-                Expr::Let(ref name_, _, _) | Expr::LetRec(ref name_, _, _, _, _)
+                Expr::Let(ref name_, _, _, _, _) | Expr::LetRec(ref name_, _, _, _, _)
                     if name == name_ =>
                 {
                     Some(e)
@@ -81,10 +81,12 @@ fn aux_expr<T>(
             box aux_expr(e2, name, v, ef, lf, tf),
             pos,
         ),
-        Expr::Let(name_, box e1, box e2) => Expr::Let(
+        Expr::Let(name_, typ, box e1, box e2, pos) => Expr::Let(
             name_,
+            aux_type(typ, name, v, ef, lf, tf),
             box aux_expr(e1, name, v, ef, lf, tf),
             box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
         ),
         Expr::LetRec(name_, typ, box e1, box e2, pos) => Expr::LetRec(
             name_,

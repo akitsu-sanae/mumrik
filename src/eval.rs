@@ -20,7 +20,7 @@ pub fn expr(e: Expr) -> Expr {
                 unreachable!()
             }
         }
-        Expr::Let(name, box e1, box e2) => {
+        Expr::Let(name, _, box e1, box e2, _) => {
             let e1 = expr(e1);
             expr(e2.subst_expr(&name, &e1))
         }

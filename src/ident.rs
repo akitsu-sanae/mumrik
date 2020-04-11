@@ -17,6 +17,9 @@ impl Ident {
     pub fn fresh() -> Ident {
         Ident(format!("<fresh-{}>", COUNTER.fetch_add(1, SeqCst)))
     }
+    pub fn to_nf_ident(self) -> nf::ident::Ident {
+        nf::ident::Ident(self.0)
+    }
 }
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);

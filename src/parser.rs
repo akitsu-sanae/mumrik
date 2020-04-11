@@ -33,16 +33,19 @@ pub rule program() -> Expr
 
 rule toplevel_expr() -> Expr
     = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+        let ret_type = ret_type.unwrap_or_else(|| Type::Var(Ident::fresh()));
         Expr::Let(
             name,
+            Type::Func(box param_type.clone(), box ret_type.clone()),
             box Expr::Const(Literal::Func {
                 param_name: param_name,
                 param_type: param_type,
-                ret_type: ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())),
+                ret_type: ret_type,
                 body: box body,
                 pos: Position {start: start, end: end}
             }),
-            box left)
+            box left,
+            Position {start: start, end: end})
     }
     / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::LetRec(
@@ -57,8 +60,9 @@ rule toplevel_expr() -> Expr
             box left,
             Position {start: start, end: end})
     }
-    / LET() name:ident() EQUAL() init:expr() SEMICOLON() left:toplevel_expr() {
-        Expr::Let(name, box init, box left)
+    / start:position!() LET() name:ident() typ:(COLON() typ:type_() { typ })? EQUAL() init:expr() SEMICOLON() end:position!() left:toplevel_expr() {
+        let typ = typ.unwrap_or_else(|| Type::Var(Ident::fresh()));
+        Expr::Let(name, typ, box init, box left, Position {start: start, end: end})
     }
     / TYPE() name:ident() EQUAL() typ:type_() SEMICOLON() left:toplevel_expr() {
         Expr::LetType(name, typ, box left)
@@ -66,16 +70,19 @@ rule toplevel_expr() -> Expr
     / expr()
 
 rule expr() -> Expr
-    = LET() name:ident() EQUAL() e1:inner_expr() SEMICOLON() e2:expr() {
-        Expr::Let(name, box e1, box e2)
+    = start:position!() LET() name:ident() typ:(COLON() typ:type_() { typ })? EQUAL() e1:inner_expr() SEMICOLON() end:position!() e2:expr() {
+        let typ = typ.unwrap_or_else(|| Type::Var(Ident::fresh()));
+        Expr::Let(name, typ, box e1, box e2, Position {start: start, end: end})
     }
     / TYPE() name:ident() EQUAL() typ:type_() SEMICOLON() e:expr() {
         Expr::LetType(name, typ, box e)
     }
-    / es:(inner_expr() ** SEMICOLON()) {?
+    / es:((start:position!() e:inner_expr() end:position!() { (e, Position {start: start, end: end}) }) ** SEMICOLON()) {?
         let mut es = es;
-        if let Some(head) = es.pop() {
-            Ok(es.into_iter().rev().fold(head, |acc, e| Expr::Let(Ident::new("<dummy-sequence>"), box e, box acc)))
+        if let Some((head, _)) = es.pop() {
+            Ok(es.into_iter().rev().fold(head, |acc, (e, pos)| {
+                Expr::Let(Ident::new("<dummy-sequence>"), Type::Var(Ident::fresh()), box e, box acc, pos)
+            }))
         } else {
             Err("no expr found")
         }

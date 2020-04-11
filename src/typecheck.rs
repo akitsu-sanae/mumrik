@@ -129,11 +129,12 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
             let ret_type = subst.apply_type(ret_type);
             Ok((ret_type, subst))
         }
-        Expr::Let(ref name, box ref e1, box ref e2) => {
+        Expr::Let(ref name, ref typ, box ref e1, box ref e2, ref pos) => {
             let (ty1, subst1) = check_expr(e1, env)?;
-            let env = env.add(name.clone(), ty1);
+            let env = env.add(name.clone(), ty1.clone());
             let (ty2, subst2) = check_expr(e2, &env)?;
-            let subst = Subst::compose(subst1, subst2);
+            let subst3 = unify(VecDeque::from(vec![(typ.clone(), ty1)]), pos)?;
+            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
             let ty2 = subst.apply_type(ty2);
             Ok((ty2, subst))
         }
