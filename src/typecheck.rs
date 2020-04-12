@@ -107,9 +107,11 @@ pub fn check(e: Expr) -> Result<(Expr, Type), Error> {
 fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
     match e {
         Expr::Const(ref lit) => Ok(check_literal(lit, env)?),
-        Expr::Var(ref name, ref pos) => {
-            if let Some(typ) = env.lookup(name) {
-                Ok((typ, Subst::new()))
+        Expr::Var(ref name, ref typ, ref pos) => {
+            if let Some(typ_) = env.lookup(name) {
+                let subst = unify(VecDeque::from(vec![(typ_.clone(), typ.clone())]), pos)?;
+                let typ_ = subst.apply_type(typ_);
+                Ok((typ_, subst))
             } else {
                 Err(Error::UnboundVariable {
                     pos: pos.clone(),

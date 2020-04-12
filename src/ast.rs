@@ -1,5 +1,6 @@
 use ident::Ident;
 
+mod free_vars;
 mod is_occurs;
 mod printer;
 mod subst;
@@ -13,7 +14,7 @@ pub struct Position {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Literal),
-    Var(Ident, Position),
+    Var(Ident, Type, Position),
     Apply(Box<Expr>, Box<Expr>, Position),
     Let(Ident, Type, Box<Expr>, Box<Expr>, Position),
     LetRec(Ident, Type, Box<Expr>, Box<Expr>, Position),

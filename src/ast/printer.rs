@@ -11,7 +11,7 @@ impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Expr::Const(ref lit) => write!(f, "{}", lit),
-            Expr::Var(ref name, _) => write!(f, "{}", name),
+            Expr::Var(ref name, ref typ, _) => write!(f, "{} as {}", name, typ),
             Expr::Apply(box ref e1, box ref e2, _) => write!(f, "({}) ({})", e1, e2),
             Expr::Let(ref name, ref typ, box ref e1, box ref e2, _) => {
                 write!(f, "let {}: {} = {}; {}", name, typ, e1, e2)

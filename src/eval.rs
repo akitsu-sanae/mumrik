@@ -3,7 +3,7 @@ use ast::*;
 pub fn expr(e: Expr) -> Expr {
     match e {
         Expr::Const(lit) => Expr::Const(literal(lit)),
-        Expr::Var(_, _) => e,
+        Expr::Var(_, _, _) => e,
         Expr::Apply(box e1, box e2, _) => {
             let f = expr(e1);
             if let Expr::Const(Literal::Func {
@@ -29,9 +29,9 @@ pub fn expr(e: Expr) -> Expr {
                 &name,
                 &Expr::LetRec(
                     name.clone(),
-                    typ,
+                    typ.clone(),
                     box e1,
-                    box Expr::Var(name.clone(), Position { start: 0, end: 0 }),
+                    box Expr::Var(name.clone(), typ, Position { start: 0, end: 0 }),
                     pos,
                 ),
             );

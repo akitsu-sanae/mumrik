@@ -24,7 +24,9 @@ fn main() {
         Ok(expr) => match typecheck::check(expr) {
             Ok((expr, typ)) => {
                 if let Some(output_filename) = args.output_filename {
-                    codegen::codegen(expr, &output_filename)
+                    if let Err(err) = codegen::codegen(expr, &output_filename) {
+                        panic!("{}", err)
+                    }
                 } else {
                     println!("{}: {}", eval::expr(expr), typ);
                 }

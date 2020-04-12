@@ -189,7 +189,7 @@ rule println_expr() -> Expr
 
 rule var_expr() -> Expr
     = start:position!() name:ident() end:position!() {
-        Expr::Var(name, Position{start: start, end: end})
+        Expr::Var(name, Type::Var(Ident::fresh()), Position{start: start, end: end})
     }
 
 rule number() -> i32

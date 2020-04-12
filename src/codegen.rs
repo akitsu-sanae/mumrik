@@ -4,10 +4,19 @@ use ident::Ident;
 fn conv_expr(e: Expr) -> nf::Nf {
     match e {
         Expr::Const(lit) => conv_lit(lit),
-        Expr::Var(name, _) => nf::Nf {
-            funcs: vec![],
-            body: nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
-        },
+        Expr::Var(name, typ, _) => {
+            if let Type::Func(_, _) = typ {
+                nf::Nf {
+                    funcs: vec![],
+                    body: nf::Expr::Var(name.to_nf_ident()),
+                }
+            } else {
+                nf::Nf {
+                    funcs: vec![],
+                    body: nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
+                }
+            }
+        }
         Expr::Apply(box e1, box e2, _) => {
             let mut funcs = vec![];
             let mut nf1 = conv_expr(e1);
@@ -30,7 +39,54 @@ fn conv_expr(e: Expr) -> nf::Nf {
                 body: nf::Expr::Let(name.to_nf_ident(), conv_ty(typ), box nf1.body, box nf2.body),
             }
         }
-        Expr::LetRec(name, typ, box e1, box e2, _) => todo!(),
+        Expr::LetRec(name, typ, box e1, box e2, _) => {
+            let free_vars: Vec<_> = e1
+                .free_term_vars()
+                .into_iter()
+                .filter(|(ref name_, _)| name_ != &name)
+                .collect();
+            let nf_name = name.to_nf_ident();
+            let call_expr = nf::Expr::Call(
+                box nf::Expr::Var(nf_name.clone()),
+                free_vars
+                    .iter()
+                    .map(|(name, _)| nf::Expr::Var(name.clone().to_nf_ident()))
+                    .collect(),
+            );
+
+            let nf1 = conv_expr(e1);
+            let nf2 = conv_expr(e2);
+            let mut nf1_funcs = nf1
+                .funcs
+                .into_iter()
+                .map(|func| func.subst_expr(&nf_name, &call_expr))
+                .collect();
+            let nf1_body = nf1.body.subst_expr(&nf_name, &call_expr);
+            let mut nf2_funcs = nf2
+                .funcs
+                .into_iter()
+                .map(|func| func.subst_expr(&nf_name, &call_expr))
+                .collect();
+            let nf2_body = nf2.body.subst_expr(&nf_name, &call_expr);
+
+            let mut funcs = vec![];
+            funcs.append(&mut nf1_funcs);
+            funcs.append(&mut nf2_funcs);
+            funcs.push(nf::Func {
+                name: nf_name,
+                params: free_vars
+                    .into_iter()
+                    .map(|(name, typ)| (name.to_nf_ident(), conv_ty(typ)))
+                    .collect(),
+                ret_type: nf::Type::Pointer(box conv_ty(typ)),
+                body: nf1_body,
+            });
+
+            nf::Nf {
+                funcs: funcs,
+                body: nf2_body,
+            }
+        }
         Expr::LetType(_, _, _) => unreachable!(),
         Expr::If(box cond, box e1, box e2, _) => {
             let nf_cond = conv_expr(cond);
@@ -139,11 +195,11 @@ fn conv_ty(ty: Type) -> nf::Type {
     }
 }
 
-pub fn codegen(e: Expr, filename: &str) {
+pub fn codegen(e: Expr, filename: &str) -> Result<(), nf::error::Error> {
     let nf = conv_expr(e);
-    println!("{:?}", nf);
 
     use std::fs;
     let mut f = fs::File::create(filename).unwrap_or_else(|_| panic!("failed: open {}.", filename));
-    nf.codegen(filename, &mut f).unwrap();
+    nf.codegen(filename, &mut f)?;
+    Ok(())
 }

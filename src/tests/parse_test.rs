@@ -10,7 +10,11 @@ fn primitive_literal() {
     assert_eq!(program("unit"), Ok(Const(Unit)));
     assert_eq!(
         program("a"),
-        Ok(Var(Ident::new("a"), Position { start: 0, end: 1 }))
+        Ok(Var(
+            Ident::new("a"),
+            Type::Var(Ident::new("<fresh-expected>")),
+            Position { start: 0, end: 1 }
+        ))
     );
 }
 
@@ -23,7 +27,11 @@ fn apply() {
                 param_name: Ident::new("x"),
                 param_type: Type::Int,
                 ret_type: Type::Int,
-                body: box Var(Ident::new("x"), Position { start: 20, end: 21 }),
+                body: box Var(
+                    Ident::new("x"),
+                    Type::Var(Ident::new("<fresh-expected>")),
+                    Position { start: 20, end: 21 }
+                ),
                 pos: Position { start: 1, end: 21 }
             }),
             box Const(Number(1)),
@@ -38,11 +46,11 @@ fn sequence() {
         program("1; 2; 3"),
         Ok(Let(
             Ident::new("<dummy-sequence>"),
-            Type::Var(Ident::new("<fresh-1>")),
+            Type::Var(Ident::new("<fresh-expected>")),
             box Const(Number(1)),
             box Let(
                 Ident::new("<dummy-sequence>"),
-                Type::Var(Ident::new("<fresh-0>")),
+                Type::Var(Ident::new("<fresh-expected>")),
                 box Const(Number(2)),
                 box Const(Number(3)),
                 Position { start: 3, end: 4 }
@@ -165,14 +173,22 @@ f 13
                 ret_type: Type::Int,
                 body: box BinOp(
                     ast::BinOp::Add,
-                    box Var(Ident::new("a"), Position { start: 25, end: 27 }),
+                    box Var(
+                        Ident::new("a"),
+                        Type::Var(Ident::new("<fresh-expected>")),
+                        Position { start: 25, end: 27 }
+                    ),
                     box Const(Number(12)),
                     Position { start: 27, end: 29 }
                 ),
                 pos: Position { start: 1, end: 34 },
             }),
             box Apply(
-                box Var(Ident::new("f"), Position { start: 34, end: 36 }),
+                box Var(
+                    Ident::new("f"),
+                    Type::Var(Ident::new("<fresh-expected>")),
+                    Position { start: 34, end: 36 }
+                ),
                 box Const(Number(13)),
                 Position { start: 34, end: 39 }
             ),
@@ -206,7 +222,11 @@ fib 3
                 body: box If(
                     box BinOp(
                         ast::BinOp::Lt,
-                        box Var(Ident::new("x"), Position { start: 34, end: 36 }),
+                        box Var(
+                            Ident::new("x"),
+                            Type::Var(Ident::new("<fresh-expected>")),
+                            Position { start: 34, end: 36 }
+                        ),
                         box Const(Number(2)),
                         Position { start: 36, end: 38 }
                     ),
@@ -214,20 +234,36 @@ fib 3
                     box BinOp(
                         ast::BinOp::Add,
                         box Apply(
-                            box Var(Ident::new("fib"), Position { start: 73, end: 77 }),
+                            box Var(
+                                Ident::new("fib"),
+                                Type::Var(Ident::new("<fresh-expected>")),
+                                Position { start: 73, end: 77 }
+                            ),
                             box BinOp(
                                 ast::BinOp::Sub,
-                                box Var(Ident::new("x"), Position { start: 78, end: 79 }),
+                                box Var(
+                                    Ident::new("x"),
+                                    Type::Var(Ident::new("<fresh-expected>")),
+                                    Position { start: 78, end: 79 }
+                                ),
                                 box Const(Number(1)),
                                 Position { start: 79, end: 80 }
                             ),
                             Position { start: 73, end: 83 }
                         ),
                         box Apply(
-                            box Var(Ident::new("fib"), Position { start: 85, end: 89 }),
+                            box Var(
+                                Ident::new("fib"),
+                                Type::Var(Ident::new("<fresh-expected>")),
+                                Position { start: 85, end: 89 }
+                            ),
                             box BinOp(
                                 ast::BinOp::Sub,
-                                box Var(Ident::new("x"), Position { start: 90, end: 91 }),
+                                box Var(
+                                    Ident::new("x"),
+                                    Type::Var(Ident::new("<fresh-expected>")),
+                                    Position { start: 90, end: 91 }
+                                ),
                                 box Const(Number(2)),
                                 Position { start: 91, end: 92 }
                             ),
@@ -245,6 +281,7 @@ fib 3
             box Apply(
                 box Var(
                     Ident::new("fib"),
+                    Type::Var(Ident::new("<fresh-expected>")),
                     Position {
                         start: 103,
                         end: 107
