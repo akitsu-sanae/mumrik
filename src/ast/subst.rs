@@ -112,9 +112,12 @@ fn aux_expr<T>(
             box aux_expr(e2, name, v, ef, lf, tf),
             pos,
         ),
-        Expr::FieldAccess(box e, label, pos) => {
-            Expr::FieldAccess(box aux_expr(e, name, v, ef, lf, tf), label, pos)
-        }
+        Expr::FieldAccess(box e, typ, label, pos) => Expr::FieldAccess(
+            box aux_expr(e, name, v, ef, lf, tf),
+            aux_type(typ, name, v, ef, lf, tf),
+            label,
+            pos,
+        ),
         Expr::Println(box e) => Expr::Println(box aux_expr(e, name, v, ef, lf, tf)),
     }
 }

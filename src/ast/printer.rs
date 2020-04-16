@@ -26,7 +26,7 @@ impl fmt::Display for Expr {
                 write!(f, "if {} {{ {} }} else {{ {} }}", cond, e1, e2)
             }
             Expr::BinOp(ref op, box ref e1, box ref e2, _) => write!(f, "({}) {} ({})", e1, op, e2),
-            Expr::FieldAccess(box ref e, ref label, _) => write!(f, "({}).{}", e, label),
+            Expr::FieldAccess(box ref e, _, ref label, _) => write!(f, "({}).{}", e, label),
             Expr::Println(box ref e) => write!(f, "println {}", e),
         }
     }

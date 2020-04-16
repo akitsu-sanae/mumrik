@@ -147,6 +147,7 @@ fn field_access() {
         program("{id=42}.id"),
         Ok(FieldAccess(
             box Const(Record(vec![(Ident::new("id"), Const(Number(42)))],)),
+            Type::Var(Ident::new("<fresh-expected>")),
             Ident::new("id"),
             Position { start: 0, end: 10 }
         ))

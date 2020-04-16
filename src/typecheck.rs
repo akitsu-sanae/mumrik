@@ -182,7 +182,23 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
                 BinOp::Eq | BinOp::Neq | BinOp::Lt | BinOp::Gt => Ok((Type::Bool, subst)),
             }
         }
-        Expr::FieldAccess(_, _, _) => todo!(),
+        Expr::FieldAccess(box ref e, ref typ, ref label, ref pos) => {
+            let (typ_, subst) = check_expr(e, env)?;
+            let subst_eq = unify(VecDeque::from(vec![(typ_.clone(), typ.clone())]), pos)?;
+            let subst = Subst::compose(subst, subst_eq);
+            if let Type::Record(fields) = subst.apply_type(typ_) {
+                Ok((
+                    fields
+                        .into_iter()
+                        .find(|(ref label_, _)| label == label_)
+                        .unwrap()
+                        .1,
+                    subst,
+                ))
+            } else {
+                todo!()
+            }
+        }
         Expr::Println(box ref e) => {
             let (_, subst) = check_expr(e, env)?;
             Ok((Type::Unit, subst))
@@ -211,6 +227,22 @@ fn check_literal(lit: &Literal, env: &Env<Type>) -> Result<(Type, Subst), Error>
         Literal::Bool(_) => Ok((Type::Bool, Subst::new())),
         Literal::Char(_) => Ok((Type::Char, Subst::new())),
         Literal::Unit => Ok((Type::Unit, Subst::new())),
-        Literal::Record(_fields) => todo!(),
+        Literal::Record(ref fields) => {
+            let mut substs = vec![];
+            let fields: Result<_, _> = fields
+                .iter()
+                .map(|(label, e)| {
+                    let (ty, subst) = check_expr(e, env)?;
+                    substs.push(subst);
+                    Ok((label.clone(), ty))
+                })
+                .collect();
+            Ok((
+                Type::Record(fields?),
+                substs
+                    .into_iter()
+                    .fold(Subst::new(), |acc, subst| Subst::compose(acc, subst)),
+            ))
+        }
     }
 }

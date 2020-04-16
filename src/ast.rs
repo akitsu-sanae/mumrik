@@ -21,7 +21,7 @@ pub enum Expr {
     LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
-    FieldAccess(Box<Expr>, Ident, Position),
+    FieldAccess(Box<Expr>, Type, Ident, Position),
     Println(Box<Expr>),
 }
 

@@ -69,7 +69,19 @@ pub fn expr(e: Expr) -> Expr {
                 _ => unreachable!(),
             })
         }
-        Expr::FieldAccess(_, _, _) => todo!(),
+        Expr::FieldAccess(box e, _, label, _) => {
+            if let Expr::Const(Literal::Record(fields)) = expr(e) {
+                expr(
+                    fields
+                        .into_iter()
+                        .find(|(ref label_, _)| &label == label_)
+                        .unwrap()
+                        .1,
+                )
+            } else {
+                unreachable!()
+            }
+        }
         Expr::Println(box e) => {
             println!("{}", expr(e));
             Expr::Const(Literal::Unit)

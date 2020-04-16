@@ -121,7 +121,7 @@ rule apply_expr() -> Expr
 
 rule field_access_expr() -> Expr
     = start:position!() e:factor_expr() labels:(DOT() label:ident() end:position!() { (label, end) })* {
-        labels.into_iter().fold(e, |acc, (label, end)| Expr::FieldAccess(box acc, label, Position {start: start, end: end}))
+        labels.into_iter().fold(e, |acc, (label, end)| Expr::FieldAccess(box acc, Type::Var(Ident::fresh()), label, Position {start: start, end: end}))
     }
 
 rule factor_expr() -> Expr

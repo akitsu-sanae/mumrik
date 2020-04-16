@@ -4,19 +4,16 @@ use ident::Ident;
 fn conv_expr(e: Expr) -> nf::Nf {
     match e {
         Expr::Const(lit) => conv_lit(lit),
-        Expr::Var(name, typ, _) => {
-            if let Type::Func(_, _) = typ {
-                nf::Nf {
-                    funcs: vec![],
-                    body: nf::Expr::Var(name.to_nf_ident()),
-                }
-            } else {
-                nf::Nf {
-                    funcs: vec![],
-                    body: nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
-                }
-            }
-        }
+        Expr::Var(name, typ, _) => match typ {
+            Type::Func(_, _) | Type::Record(_) => nf::Nf {
+                funcs: vec![],
+                body: nf::Expr::Var(name.to_nf_ident()),
+            },
+            _ => nf::Nf {
+                funcs: vec![],
+                body: nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
+            },
+        },
         Expr::Apply(box e1, box e2, _) => {
             let mut funcs = vec![];
             let mut nf1 = conv_expr(e1);
@@ -111,7 +108,21 @@ fn conv_expr(e: Expr) -> nf::Nf {
                 body: nf::Expr::BinOp(conv_binop(op), box nf1.body, box nf2.body),
             }
         }
-        Expr::FieldAccess(_, _, _) => todo!(),
+        Expr::FieldAccess(box e, typ, label, _) => {
+            if let Type::Record(fields) = typ {
+                let nf = conv_expr(e);
+                let idx = fields
+                    .iter()
+                    .position(|(ref label_, _)| &label == label_)
+                    .unwrap();
+                nf::Nf {
+                    funcs: nf.funcs,
+                    body: nf::Expr::Load(box nf::Expr::TupleAt(box nf.body, idx)),
+                }
+            } else {
+                unreachable!()
+            }
+        }
         Expr::Println(box e) => {
             let nf = conv_expr(e);
             nf::Nf {
@@ -161,7 +172,21 @@ fn conv_lit(lit: Literal) -> nf::Nf {
             funcs: vec![],
             body: nf::Expr::Const(nf::Literal::Int(0)), // dummy,
         },
-        Literal::Record(_) => todo!(),
+        Literal::Record(fields) => {
+            let mut funcs = vec![];
+            let elems = fields
+                .into_iter()
+                .map(|(_, e)| {
+                    let mut nf = conv_expr(e);
+                    funcs.append(&mut nf.funcs);
+                    nf.body
+                })
+                .collect();
+            nf::Nf {
+                funcs: funcs,
+                body: nf::Expr::Const(nf::Literal::Tuple(elems)),
+            }
+        }
     }
 }
 
@@ -185,12 +210,9 @@ fn conv_ty(ty: Type) -> nf::Type {
         Type::Char => nf::Type::Char,
         Type::Unit => nf::Type::Int, // dummy
         Type::Func(box ty1, box ty2) => nf::Type::Func(vec![conv_ty(ty1)], box conv_ty(ty2)),
-        Type::Record(fields) => nf::Type::Struct(
-            fields
-                .into_iter()
-                .map(|(label, typ)| (label.to_nf_ident(), conv_ty(typ)))
-                .collect(),
-        ),
+        Type::Record(fields) => {
+            nf::Type::Tuple(fields.into_iter().map(|(_, typ)| conv_ty(typ)).collect())
+        }
         Type::Var(_) => unreachable!(),
     }
 }

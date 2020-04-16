@@ -63,7 +63,7 @@ impl Expr {
                 vars.extend(e2.free_term_vars());
                 vars
             }
-            Expr::FieldAccess(box ref e, _, _) => e.free_term_vars(),
+            Expr::FieldAccess(box ref e, _, _, _) => e.free_term_vars(),
             Expr::Println(box ref e) => e.free_term_vars(),
         }
     }
