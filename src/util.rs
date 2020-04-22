@@ -14,5 +14,5 @@ pub fn pos_to_location(src: &str, mut pos: usize) -> (usize, usize) {
             pos -= 1;
         }
     }
-    unreachable!()
+    (line, column)
 }

@@ -15,7 +15,18 @@ pub fn expr(e: Expr) -> Expr {
             }) = f
             {
                 let e2 = expr(e2);
-                expr(body.subst_expr(&param_name, &e2))
+                if param_name.is_omitted_param_name() {
+                    if let Expr::Const(Literal::Record(fields)) = e2 {
+                        let body = fields
+                            .into_iter()
+                            .fold(body, |acc, (name, e)| acc.subst_expr(&name, &e));
+                        expr(body)
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    expr(body.subst_expr(&param_name, &e2))
+                }
             } else {
                 unreachable!()
             }

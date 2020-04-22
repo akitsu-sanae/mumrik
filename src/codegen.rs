@@ -5,7 +5,7 @@ fn conv_expr(e: Expr) -> nf::Nf {
     match e {
         Expr::Const(lit) => conv_lit(lit),
         Expr::Var(name, typ, _) => match typ {
-            Type::Func(_, _) | Type::Record(_) => nf::Nf {
+            Type::Func(_, _) => nf::Nf {
                 funcs: vec![],
                 body: nf::Expr::Var(name.to_nf_ident()),
             },
@@ -145,11 +145,34 @@ fn conv_lit(lit: Literal) -> nf::Nf {
             let nf_body = conv_expr(body);
             let func_name = Ident::fresh();
             let mut funcs = nf_body.funcs;
+            let body = if param_name.is_omitted_param_name() {
+                if let Type::Record(fields) = param_type.clone() {
+                    let param_name = param_name.clone().to_nf_ident();
+                    fields
+                        .into_iter()
+                        .enumerate()
+                        .fold(nf_body.body, |acc, (n, (name, typ))| {
+                            nf::Expr::Let(
+                                name.to_nf_ident(),
+                                conv_ty(typ),
+                                box nf::Expr::Load(box nf::Expr::TupleAt(
+                                    box nf::Expr::Var(param_name.clone()),
+                                    n,
+                                )),
+                                box acc,
+                            )
+                        })
+                } else {
+                    unreachable!()
+                }
+            } else {
+                nf_body.body
+            };
             funcs.push(nf::Func {
                 name: func_name.clone().to_nf_ident(),
                 params: vec![(param_name.to_nf_ident(), conv_ty(param_type))],
                 ret_type: conv_ty(ret_type),
-                body: nf_body.body,
+                body: body,
             });
             nf::Nf {
                 funcs: funcs,

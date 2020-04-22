@@ -32,7 +32,7 @@ pub rule program() -> Expr
     = __ e:toplevel_expr() { e }
 
 rule toplevel_expr() -> Expr
-    = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_()  ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+    = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         let ret_type = ret_type.unwrap_or_else(|| Type::Var(Ident::fresh()));
         Expr::Let(
             name,
@@ -47,12 +47,41 @@ rule toplevel_expr() -> Expr
             box left,
             Position {start: start, end: end})
     }
+    / start:position!() FUNC() name:ident() record_type:record_type() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+        let ret_type = ret_type.unwrap_or_else(|| Type::Var(Ident::fresh()));
+        Expr::Let(
+            name,
+            Type::Func(box record_type.clone(), box ret_type.clone()),
+            box Expr::Const(Literal::Func {
+                param_name: Ident::omitted_param_name(),
+                param_type: record_type,
+                ret_type: ret_type,
+                body: box body,
+                pos: Position {start: start, end: end}
+            }),
+            box left,
+            Position {start: start, end: end})
+    }
     / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::LetRec(
             name, Type::Func(box param_type.clone(), box ret_type.clone()),
             box Expr::Const(Literal::Func {
                 param_name: param_name,
                 param_type: param_type,
+                ret_type: ret_type,
+                body: box body,
+                pos: Position {start: start, end: end}
+            }),
+            box left,
+            Position {start: start, end: end})
+    }
+    / start:position!() REC() FUNC() name:ident() record_type:record_type() COLON() ret_type:type_() LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+        Expr::LetRec(
+            name,
+            Type::Func(box record_type.clone(), box ret_type.clone()),
+            box Expr::Const(Literal::Func {
+                param_name: Ident::omitted_param_name(),
+                param_type: record_type,
                 ret_type: ret_type,
                 body: box body,
                 pos: Position {start: start, end: end}
@@ -146,6 +175,16 @@ rule func_expr() -> Expr
             pos: Position {start: start, end: end}
         })
     }
+    / start:position!() FUNC() record_type:record_type() ret_type:(COLON() typ:type_() { typ })? FAT_ARROW() body:expr() end:position!() {
+        Expr::Const(Literal::Func{
+            param_name: Ident::omitted_param_name(),
+            param_type: record_type,
+            ret_type: ret_type.unwrap_or_else(|| Type::Var(Ident::fresh())),
+            body: box body,
+            pos: Position {start: start, end: end}
+        })
+    }
+
 
 rule record_expr() -> Expr
     = LEFT_BRACE() arms:(label:ident() EQUAL() e:expr() COMMA()? { (label, e) })* RIGHT_BRACE() {

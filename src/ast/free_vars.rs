@@ -7,13 +7,23 @@ impl Expr {
         match self {
             Expr::Const(Literal::Func {
                 ref param_name,
-                param_type: _,
+                ref param_type,
                 ret_type: _,
                 box ref body,
                 pos: _,
             }) => {
                 let mut vars = body.free_term_vars();
-                vars.remove(param_name);
+                if param_name.is_omitted_param_name() {
+                    if let Type::Record(ref fields) = param_type {
+                        for (ref label, _) in fields.iter() {
+                            vars.remove(label);
+                        }
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    vars.remove(param_name);
+                }
                 vars
             }
             Expr::Const(Literal::Record(ref fields)) => {

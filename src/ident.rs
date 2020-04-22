@@ -34,6 +34,12 @@ impl Ident {
     pub fn fresh() -> Ident {
         Ident(format!("<fresh-{}>", COUNTER.fetch_add(1, SeqCst)))
     }
+    pub fn omitted_param_name() -> Ident {
+        Ident::new("<omitted-param-name>")
+    }
+    pub fn is_omitted_param_name(&self) -> bool {
+        self.0.as_str() == "<omitted-param-name>"
+    }
     pub fn to_nf_ident(self) -> nf::ident::Ident {
         nf::ident::Ident(self.0)
     }
