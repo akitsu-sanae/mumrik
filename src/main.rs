@@ -3,6 +3,7 @@
 
 extern crate nf2llvmir as nf;
 extern crate peg;
+extern crate tempfile;
 
 mod args;
 mod ast;

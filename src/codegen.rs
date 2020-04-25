@@ -248,8 +248,19 @@ fn conv_ty(ty: Type) -> nf::Type {
 pub fn codegen(e: Expr, filename: &str) -> Result<(), nf::error::Error> {
     let nf = conv_expr(e);
 
-    use std::fs;
-    let mut f = fs::File::create(filename).unwrap_or_else(|_| panic!("failed: open {}.", filename));
-    nf.codegen(filename, &mut f)?;
+    let mut temp = tempfile::Builder::new()
+        .suffix(".ll")
+        .tempfile()
+        .expect("failed: create temporary file.");
+    nf.codegen(filename, &mut temp)?;
+
+    {
+        std::process::Command::new("clang")
+            .arg(temp.path().to_str().unwrap())
+            .arg("-o")
+            .arg(filename)
+            .output()
+            .expect("failed to execute clang");
+    }
     Ok(())
 }
