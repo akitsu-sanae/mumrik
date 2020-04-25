@@ -25,7 +25,11 @@ fn main() {
             Ok((expr, typ)) => {
                 if let Some(output_filename) = args.output_filename {
                     if let Err(err) = codegen::codegen(expr, &output_filename) {
-                        panic!("{}", err)
+                        eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
+                        eprintln!(
+                            "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
+                        );
+                        std::process::exit(-1);
                     }
                 } else {
                     println!("{}: {}", eval::expr(expr), typ);
@@ -46,6 +50,7 @@ fn main() {
                     }
                     eprintln!("```");
                     eprintln!("type variable {} occurs recursively in {}", var, typ);
+                    std::process::exit(-1);
                 }
                 typecheck::Error::UnmatchType {
                     pos,
@@ -68,6 +73,7 @@ fn main() {
                         "expected type is {}, but actual type is {}",
                         expected, actual
                     );
+                    std::process::exit(-1);
                 }
                 typecheck::Error::UnboundVariable { pos, name } => {
                     let (line, column_start) = util::pos_to_location(&args.input_src, pos.start);
@@ -83,6 +89,7 @@ fn main() {
                         " ".repeat(column_start - 1),
                         "^".repeat(column_end - column_start)
                     );
+                    std::process::exit(-1);
                 }
             },
         },
@@ -98,6 +105,7 @@ fn main() {
                 "\u{001B}[31m[syntax error]\u{001B}[39m at ({}, {})\n{}",
                 err.location.line, err.location.column, msg
             );
+            std::process::exit(-1);
         }
     };
 }
