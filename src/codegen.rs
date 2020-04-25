@@ -110,14 +110,19 @@ fn conv_expr(e: Expr) -> nf::Nf {
         }
         Expr::FieldAccess(box e, typ, label, _) => {
             if let Type::Record(fields) = typ {
-                let nf = conv_expr(e);
                 let idx = fields
                     .iter()
                     .position(|(ref label_, _)| &label == label_)
                     .unwrap();
+                let nf = conv_expr(e);
+                let body = if let nf::Expr::Load(box body) = nf.body {
+                    body
+                } else {
+                    unreachable!()
+                };
                 nf::Nf {
                     funcs: nf.funcs,
-                    body: nf::Expr::Load(box nf::Expr::TupleAt(box nf.body, idx)),
+                    body: nf::Expr::Load(box nf::Expr::TupleAt(box body, idx)),
                 }
             } else {
                 unreachable!()
