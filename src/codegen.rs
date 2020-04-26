@@ -245,22 +245,44 @@ fn conv_ty(ty: Type) -> nf::Type {
     }
 }
 
-pub fn codegen(e: Expr, filename: &str) -> Result<(), nf::error::Error> {
-    let nf = conv_expr(e);
-
-    let mut temp = tempfile::Builder::new()
-        .suffix(".ll")
-        .tempfile()
-        .expect("failed: create temporary file.");
-    nf.codegen(filename, &mut temp)?;
+pub fn codegen(exprs: Vec<(String, Expr)>, filename: &str) {
+    let temps: Vec<tempfile::NamedTempFile> = exprs
+        .into_iter()
+        .map(|(filename, expr)| {
+            let mut temp = tempfile::Builder::new()
+                .suffix(".ll")
+                .tempfile()
+                .expect("failed: create temporary file.");
+            let nf = conv_expr(expr);
+            if let Err(err) = nf.codegen(&filename, &mut temp) {
+                eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
+                eprintln!(
+                    "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
+                );
+                std::process::exit(-1);
+            }
+            temp
+        })
+        .collect();
+    let temp_filenames: Vec<_> = temps
+        .iter()
+        .map(|temp| temp.path().to_str().unwrap().to_string())
+        .collect();
 
     {
-        std::process::Command::new("clang")
-            .arg(temp.path().to_str().unwrap())
+        let result = std::process::Command::new("clang")
+            .args(temp_filenames)
             .arg("-o")
             .arg(filename)
             .output()
             .expect("failed to execute clang");
+
+        if !result.status.success() {
+            eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m clang didn't terminate successfully");
+            eprintln!(
+                "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
+            );
+            std::process::exit(-1);
+        }
     }
-    Ok(())
 }
