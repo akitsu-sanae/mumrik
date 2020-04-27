@@ -97,6 +97,7 @@ pub fn expr(e: Expr) -> Expr {
             println!("{}", expr(e));
             Expr::Const(Literal::Unit)
         }
+        Expr::EmptyMark => unreachable!(),
     }
 }
 

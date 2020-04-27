@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 pub struct Args {
     pub is_interp: bool,
-    pub input_filenames: Vec<String>,
+    pub input_filename: String,
     pub output_filename: String,
 }
 
@@ -24,7 +24,7 @@ impl Args {
         let program_name = args.pop_front().unwrap();
 
         let mut is_interp = false;
-        let mut input_filenames = vec![];
+        let mut input_filename = None;
         let mut output_filename = "./a.out".to_string();
 
         while let Some(arg) = args.pop_front() {
@@ -41,19 +41,18 @@ impl Args {
                 output_filename = arg[9..].to_string();
             } else if arg.as_str().starts_with("-o=") {
                 output_filename = arg[3..].to_string();
+            } else if input_filename.is_some() {
+                print_usage(program_name.as_str());
+                std::process::exit(-1);
             } else {
-                input_filenames.push(arg);
+                input_filename = Some(arg);
             }
         }
 
-        if input_filenames.is_empty() {
-            eprintln!("input filenames are required");
-            std::process::exit(-1);
-        }
-
+        let input_filename = input_filename.unwrap_or("main.mm".to_string());
         Args {
             is_interp: is_interp,
-            input_filenames: input_filenames,
+            input_filename: input_filename,
             output_filename: output_filename,
         }
     }

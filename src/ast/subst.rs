@@ -119,6 +119,7 @@ fn aux_expr<T>(
             pos,
         ),
         Expr::Println(box e) => Expr::Println(box aux_expr(e, name, v, ef, lf, tf)),
+        Expr::EmptyMark => Expr::EmptyMark,
     }
 }
 

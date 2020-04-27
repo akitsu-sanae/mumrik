@@ -28,6 +28,7 @@ impl fmt::Display for Expr {
             Expr::BinOp(ref op, box ref e1, box ref e2, _) => write!(f, "({}) {} ({})", e1, op, e2),
             Expr::FieldAccess(box ref e, _, ref label, _) => write!(f, "({}).{}", e, label),
             Expr::Println(box ref e) => write!(f, "println {}", e),
+            Expr::EmptyMark => unreachable!(),
         }
     }
 }
@@ -96,6 +97,7 @@ impl fmt::Display for Type {
                 write!(f, "}}")
             }
             Type::Var(ref name) => write!(f, "{}", name),
+            Type::EmptyMark => unreachable!(),
         }
     }
 }

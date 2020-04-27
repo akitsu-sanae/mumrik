@@ -12,6 +12,12 @@ pub struct Position {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Program {
+    pub imports: Vec<Ident>,
+    pub expr: Expr,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Const(Literal),
     Var(Ident, Type, Position),
@@ -23,6 +29,7 @@ pub enum Expr {
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
     FieldAccess(Box<Expr>, Type, Ident, Position),
     Println(Box<Expr>),
+    EmptyMark,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,4 +69,5 @@ pub enum Type {
     Func(Box<Type>, Box<Type>),
     Record(Vec<(Ident, Type)>),
     Var(Ident),
+    EmptyMark,
 }

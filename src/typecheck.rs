@@ -198,6 +198,7 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
             let (_, subst) = check_expr(e, env)?;
             Ok((Type::Unit, subst))
         }
+        Expr::EmptyMark => Ok((Type::EmptyMark, Subst::new())),
     }
 }
 

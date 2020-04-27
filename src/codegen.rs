@@ -7,11 +7,11 @@ fn conv_expr(e: Expr) -> nf::Nf {
         Expr::Var(name, typ, _) => match typ {
             Type::Func(_, _) => nf::Nf {
                 funcs: vec![],
-                body: nf::Expr::Var(name.to_nf_ident()),
+                body: Some(nf::Expr::Var(name.to_nf_ident())),
             },
             _ => nf::Nf {
                 funcs: vec![],
-                body: nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
+                body: Some(nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident()))),
             },
         },
         Expr::Apply(box e1, box e2, _) => {
@@ -22,7 +22,10 @@ fn conv_expr(e: Expr) -> nf::Nf {
             funcs.append(&mut nf2.funcs);
             nf::Nf {
                 funcs: funcs,
-                body: nf::Expr::Call(box nf1.body, vec![nf2.body]),
+                body: Some(nf::Expr::Call(
+                    box nf1.body.unwrap(),
+                    vec![nf2.body.unwrap()],
+                )),
             }
         }
         Expr::Let(name, typ, box e1, box e2, _) => {
@@ -33,7 +36,12 @@ fn conv_expr(e: Expr) -> nf::Nf {
             funcs.append(&mut nf2.funcs);
             nf::Nf {
                 funcs: funcs,
-                body: nf::Expr::Let(name.to_nf_ident(), conv_ty(typ), box nf1.body, box nf2.body),
+                body: Some(nf::Expr::Let(
+                    name.to_nf_ident(),
+                    conv_ty(typ),
+                    box nf1.body.unwrap(),
+                    box nf2.body.unwrap(),
+                )),
             }
         }
         Expr::LetRec(name, typ, box e1, box e2, _) => {
@@ -58,13 +66,13 @@ fn conv_expr(e: Expr) -> nf::Nf {
                 .into_iter()
                 .map(|func| func.subst_expr(&nf_name, &call_expr))
                 .collect();
-            let nf1_body = nf1.body.subst_expr(&nf_name, &call_expr);
+            let nf1_body = nf1.body.unwrap().subst_expr(&nf_name, &call_expr);
             let mut nf2_funcs = nf2
                 .funcs
                 .into_iter()
                 .map(|func| func.subst_expr(&nf_name, &call_expr))
                 .collect();
-            let nf2_body = nf2.body.subst_expr(&nf_name, &call_expr);
+            let nf2_body = nf2.body.unwrap().subst_expr(&nf_name, &call_expr);
 
             let mut funcs = vec![];
             funcs.append(&mut nf1_funcs);
@@ -81,7 +89,7 @@ fn conv_expr(e: Expr) -> nf::Nf {
 
             nf::Nf {
                 funcs: funcs,
-                body: nf2_body,
+                body: Some(nf2_body),
             }
         }
         Expr::LetType(_, _, _) => unreachable!(),
@@ -94,7 +102,11 @@ fn conv_expr(e: Expr) -> nf::Nf {
             funcs.append(&mut nf2.funcs);
             nf::Nf {
                 funcs: funcs,
-                body: nf::Expr::If(box nf_cond.body, box nf1.body, box nf2.body),
+                body: Some(nf::Expr::If(
+                    box nf_cond.body.unwrap(),
+                    box nf1.body.unwrap(),
+                    box nf2.body.unwrap(),
+                )),
             }
         }
         Expr::BinOp(op, box e1, box e2, _) => {
@@ -105,7 +117,11 @@ fn conv_expr(e: Expr) -> nf::Nf {
             funcs.append(&mut nf2.funcs);
             nf::Nf {
                 funcs: funcs,
-                body: nf::Expr::BinOp(conv_binop(op), box nf1.body, box nf2.body),
+                body: Some(nf::Expr::BinOp(
+                    conv_binop(op),
+                    box nf1.body.unwrap(),
+                    box nf2.body.unwrap(),
+                )),
             }
         }
         Expr::FieldAccess(box e, typ, label, _) => {
@@ -115,14 +131,14 @@ fn conv_expr(e: Expr) -> nf::Nf {
                     .position(|(ref label_, _)| &label == label_)
                     .unwrap();
                 let nf = conv_expr(e);
-                let body = if let nf::Expr::Load(box body) = nf.body {
+                let body = if let nf::Expr::Load(box body) = nf.body.unwrap() {
                     body
                 } else {
                     unreachable!()
                 };
                 nf::Nf {
                     funcs: nf.funcs,
-                    body: nf::Expr::Load(box nf::Expr::TupleAt(box body, idx)),
+                    body: Some(nf::Expr::Load(box nf::Expr::TupleAt(box body, idx))),
                 }
             } else {
                 unreachable!()
@@ -132,9 +148,10 @@ fn conv_expr(e: Expr) -> nf::Nf {
             let nf = conv_expr(e);
             nf::Nf {
                 funcs: nf.funcs,
-                body: nf::Expr::PrintNum(box nf.body),
+                body: Some(nf::Expr::PrintNum(box nf.body.unwrap())),
             }
         }
+        Expr::EmptyMark => unreachable!(),
     }
 }
 
@@ -153,10 +170,9 @@ fn conv_lit(lit: Literal) -> nf::Nf {
             let body = if param_name.is_omitted_param_name() {
                 if let Type::Record(fields) = param_type.clone() {
                     let param_name = param_name.clone().to_nf_ident();
-                    fields
-                        .into_iter()
-                        .enumerate()
-                        .fold(nf_body.body, |acc, (n, (name, typ))| {
+                    fields.into_iter().enumerate().fold(
+                        nf_body.body.unwrap(),
+                        |acc, (n, (name, typ))| {
                             nf::Expr::Let(
                                 name.to_nf_ident(),
                                 conv_ty(typ),
@@ -166,12 +182,13 @@ fn conv_lit(lit: Literal) -> nf::Nf {
                                 )),
                                 box acc,
                             )
-                        })
+                        },
+                    )
                 } else {
                     unreachable!()
                 }
             } else {
-                nf_body.body
+                nf_body.body.unwrap()
             };
             funcs.push(nf::Func {
                 name: func_name.clone().to_nf_ident(),
@@ -181,24 +198,24 @@ fn conv_lit(lit: Literal) -> nf::Nf {
             });
             nf::Nf {
                 funcs: funcs,
-                body: nf::Expr::Var(func_name.to_nf_ident()),
+                body: Some(nf::Expr::Var(func_name.to_nf_ident())),
             }
         }
         Literal::Number(n) => nf::Nf {
             funcs: vec![],
-            body: nf::Expr::Const(nf::Literal::Int(n)),
+            body: Some(nf::Expr::Const(nf::Literal::Int(n))),
         },
         Literal::Bool(b) => nf::Nf {
             funcs: vec![],
-            body: nf::Expr::Const(nf::Literal::Bool(b)),
+            body: Some(nf::Expr::Const(nf::Literal::Bool(b))),
         },
         Literal::Char(c) => nf::Nf {
             funcs: vec![],
-            body: nf::Expr::Const(nf::Literal::Char(c)),
+            body: Some(nf::Expr::Const(nf::Literal::Char(c))),
         },
         Literal::Unit => nf::Nf {
             funcs: vec![],
-            body: nf::Expr::Const(nf::Literal::Int(0)), // dummy,
+            body: Some(nf::Expr::Const(nf::Literal::Int(0))), // dummy,
         },
         Literal::Record(fields) => {
             let mut funcs = vec![];
@@ -207,12 +224,12 @@ fn conv_lit(lit: Literal) -> nf::Nf {
                 .map(|(_, e)| {
                     let mut nf = conv_expr(e);
                     funcs.append(&mut nf.funcs);
-                    nf.body
+                    nf.body.unwrap()
                 })
                 .collect();
             nf::Nf {
                 funcs: funcs,
-                body: nf::Expr::Const(nf::Literal::Tuple(elems)),
+                body: Some(nf::Expr::Const(nf::Literal::Tuple(elems))),
             }
         }
     }
@@ -242,47 +259,40 @@ fn conv_ty(ty: Type) -> nf::Type {
             nf::Type::Tuple(fields.into_iter().map(|(_, typ)| conv_ty(typ)).collect())
         }
         Type::Var(_) => unreachable!(),
+        Type::EmptyMark => unreachable!(),
     }
 }
 
-pub fn codegen(exprs: Vec<(String, Expr)>, filename: &str) {
-    let temps: Vec<tempfile::NamedTempFile> = exprs
-        .into_iter()
-        .map(|(filename, expr)| {
-            let mut temp = tempfile::Builder::new()
-                .suffix(".ll")
-                .tempfile()
-                .expect("failed: create temporary file.");
-            let nf = conv_expr(expr);
-            if let Err(err) = nf.codegen(&filename, &mut temp) {
-                eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
-                eprintln!(
-                    "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
-                );
-                std::process::exit(-1);
-            }
-            temp
-        })
-        .collect();
-    let temp_filenames: Vec<_> = temps
-        .iter()
-        .map(|temp| temp.path().to_str().unwrap().to_string())
-        .collect();
+pub fn codegen(expr: Expr, filename: &str) {
+    let mut temp = tempfile::Builder::new()
+        .suffix(".ll")
+        .tempfile()
+        .expect("failed: create temporary file.");
+    let nf = conv_expr(expr);
+    if let Err(err) = nf.codegen("output", &mut temp) {
+        eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
+        eprintln!(
+            "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
+        );
+        std::process::exit(-1);
+    }
 
-    {
-        let result = std::process::Command::new("clang")
-            .args(temp_filenames)
-            .arg("-o")
-            .arg(filename)
-            .output()
-            .expect("failed to execute clang");
+    let temp_filename = temp.path().to_str().unwrap().to_string();
 
-        if !result.status.success() {
-            eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m clang didn't terminate successfully");
-            eprintln!(
-                "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
-            );
-            std::process::exit(-1);
-        }
+    let result = std::process::Command::new("clang")
+        .arg(temp_filename)
+        .arg("-o")
+        .arg(filename)
+        .output()
+        .expect("failed to execute clang");
+
+    if !result.status.success() {
+        eprintln!(
+            "\u{001B}[31m[internal codegen error]\u{001B}[39m clang didn't terminate successfully"
+        );
+        eprintln!(
+            "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
+        );
+        std::process::exit(-1);
     }
 }

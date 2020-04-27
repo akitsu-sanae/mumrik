@@ -28,8 +28,16 @@ rule record_type() -> Type
         Type::Record(arms)
     }
 
-pub rule program() -> Expr
-    = __ e:toplevel_expr() { e }
+pub rule program() -> Program
+    = __ imports:import_()* e:toplevel_expr() {
+        Program {
+            imports: imports,
+            expr: e,
+        }
+    }
+
+rule import_() -> Ident
+    = IMPORT() name:ident() SEMICOLON() { name }
 
 rule toplevel_expr() -> Expr
     = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
@@ -116,6 +124,7 @@ rule expr() -> Expr
             Err("no expr found")
         }
     }
+    / ![_] { Expr::EmptyMark }
 
 rule inner_expr() -> Expr
     = if_expr()
@@ -239,7 +248,7 @@ rule ident() -> Ident
     / expected!("<identifier>")
 
 rule IS_KEYWORD()
-    = TYPE() / ENUM() / MATCH() / LET() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN()
+    = TYPE() / ENUM() / MATCH() / LET() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN() / IMPORT()
 
 rule TYPE() = "type" !ident() __
 rule ENUM() = "enum" !ident() __
@@ -257,6 +266,7 @@ rule TRUE() = "true" !ident() __
 rule FALSE() = "false" !ident() __
 rule UNIT_V() = "unit" !ident() __
 rule PRINTLN() = "println" !ident() __
+rule IMPORT() = "import" !ident() __
 
 rule EQUAL() = "=" __
 rule COMMA() = "," __

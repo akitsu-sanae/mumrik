@@ -75,6 +75,7 @@ impl Expr {
             }
             Expr::FieldAccess(box ref e, _, _, _) => e.free_term_vars(),
             Expr::Println(box ref e) => e.free_term_vars(),
+            Expr::EmptyMark => HashMap::new(),
         }
     }
 }
