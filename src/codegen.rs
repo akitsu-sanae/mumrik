@@ -1,172 +1,38 @@
 use ast::*;
-use ident::Ident;
 
-fn conv_expr(e: Expr) -> nf::Nf {
+mod lambda_lifting;
+
+fn conv_toplevel_expr(e: Expr) -> nf::Nf {
     match e {
-        Expr::Const(lit) => conv_lit(lit),
-        Expr::Var(name, typ, _) => match typ {
-            Type::Func(_, _) => nf::Nf {
-                funcs: vec![],
-                body: Some(nf::Expr::Var(name.to_nf_ident())),
-            },
-            _ => nf::Nf {
-                funcs: vec![],
-                body: Some(nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident()))),
-            },
-        },
-        Expr::Apply(box e1, box e2, _) => {
-            let mut funcs = vec![];
-            let mut nf1 = conv_expr(e1);
-            let mut nf2 = conv_expr(e2);
-            funcs.append(&mut nf1.funcs);
-            funcs.append(&mut nf2.funcs);
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf::Expr::Call(
-                    box nf1.body.unwrap(),
-                    vec![nf2.body.unwrap()],
-                )),
-            }
-        }
-        Expr::Let(name, typ, box e1, box e2, _) => {
-            let mut funcs = vec![];
-            let mut nf1 = conv_expr(e1);
-            let mut nf2 = conv_expr(e2);
-            funcs.append(&mut nf1.funcs);
-            funcs.append(&mut nf2.funcs);
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf::Expr::Let(
-                    name.to_nf_ident(),
-                    conv_ty(typ),
-                    box nf1.body.unwrap(),
-                    box nf2.body.unwrap(),
-                )),
-            }
-        }
-        Expr::LetRec(name, typ, box e1, box e2, _) => {
-            let free_vars: Vec<_> = e1
-                .free_term_vars()
-                .into_iter()
-                .filter(|(ref name_, _)| name_ != &name)
-                .collect();
-            let nf_name = name.to_nf_ident();
-            let call_expr = nf::Expr::Call(
-                box nf::Expr::Var(nf_name.clone()),
-                free_vars
-                    .iter()
-                    .map(|(name, _)| nf::Expr::Var(name.clone().to_nf_ident()))
-                    .collect(),
-            );
-
-            let nf1 = conv_expr(e1);
-            let nf2 = conv_expr(e2);
-            let mut nf1_funcs = nf1
-                .funcs
-                .into_iter()
-                .map(|func| func.subst_expr(&nf_name, &call_expr))
-                .collect();
-            let nf1_body = nf1.body.unwrap().subst_expr(&nf_name, &call_expr);
-            let mut nf2_funcs = nf2
-                .funcs
-                .into_iter()
-                .map(|func| func.subst_expr(&nf_name, &call_expr))
-                .collect();
-            let nf2_body = nf2.body.unwrap().subst_expr(&nf_name, &call_expr);
-
-            let mut funcs = vec![];
-            funcs.append(&mut nf1_funcs);
-            funcs.append(&mut nf2_funcs);
-            funcs.push(nf::Func {
-                name: nf_name,
-                params: free_vars
-                    .into_iter()
-                    .map(|(name, typ)| (name.to_nf_ident(), conv_ty(typ)))
-                    .collect(),
-                ret_type: nf::Type::Pointer(box conv_ty(typ)),
-                body: nf1_body,
-            });
-
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf2_body),
-            }
-        }
-        Expr::LetType(_, _, _) => unreachable!(),
-        Expr::If(box cond, box e1, box e2, _) => {
-            let nf_cond = conv_expr(cond);
-            let mut nf1 = conv_expr(e1);
-            let mut nf2 = conv_expr(e2);
-            let mut funcs = nf_cond.funcs;
-            funcs.append(&mut nf1.funcs);
-            funcs.append(&mut nf2.funcs);
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf::Expr::If(
-                    box nf_cond.body.unwrap(),
-                    box nf1.body.unwrap(),
-                    box nf2.body.unwrap(),
-                )),
-            }
-        }
-        Expr::BinOp(op, box e1, box e2, _) => {
-            let mut nf1 = conv_expr(e1);
-            let mut nf2 = conv_expr(e2);
-            let mut funcs = vec![];
-            funcs.append(&mut nf1.funcs);
-            funcs.append(&mut nf2.funcs);
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf::Expr::BinOp(
-                    conv_binop(op),
-                    box nf1.body.unwrap(),
-                    box nf2.body.unwrap(),
-                )),
-            }
-        }
-        Expr::FieldAccess(box e, typ, label, _) => {
-            if let Type::Record(fields) = typ {
-                let idx = fields
-                    .iter()
-                    .position(|(ref label_, _)| &label == label_)
-                    .unwrap();
-                let nf = conv_expr(e);
-                let body = if let nf::Expr::Load(box body) = nf.body.unwrap() {
-                    body
-                } else {
-                    unreachable!()
-                };
-                nf::Nf {
-                    funcs: nf.funcs,
-                    body: Some(nf::Expr::Load(box nf::Expr::TupleAt(box body, idx))),
-                }
-            } else {
-                unreachable!()
-            }
-        }
-        Expr::Println(box e) => {
-            let nf = conv_expr(e);
-            nf::Nf {
-                funcs: nf.funcs,
-                body: Some(nf::Expr::PrintNum(box nf.body.unwrap())),
-            }
-        }
-        Expr::EmptyMark => unreachable!(),
-    }
-}
-
-fn conv_lit(lit: Literal) -> nf::Nf {
-    match lit {
-        Literal::Func {
-            param_name,
-            param_type,
-            ret_type,
-            box body,
-            pos: _,
-        } => {
-            let nf_body = conv_expr(body);
-            let func_name = Ident::fresh();
-            let mut funcs = nf_body.funcs;
+        Expr::Let(
+            func_name,
+            _,
+            box Expr::Const(Literal::Func {
+                param_name,
+                param_type,
+                ret_type,
+                box body,
+                pos: _,
+            }),
+            box left,
+            _,
+        )
+        | Expr::LetRec(
+            func_name,
+            _,
+            box Expr::Const(Literal::Func {
+                param_name,
+                param_type,
+                ret_type,
+                box body,
+                pos: _,
+            }),
+            box left,
+            _,
+        ) => {
+            let mut nf_left = conv_toplevel_expr(left);
+            let mut nf_body = conv_toplevel_expr(body);
+            nf_left.funcs.append(&mut nf_body.funcs);
             let body = if param_name.is_omitted_param_name() {
                 if let Type::Record(fields) = param_type.clone() {
                     let param_name = param_name.clone().to_nf_ident();
@@ -190,47 +56,84 @@ fn conv_lit(lit: Literal) -> nf::Nf {
             } else {
                 nf_body.body.unwrap()
             };
-            funcs.push(nf::Func {
+            nf_left.funcs.push(nf::Func {
                 name: func_name.clone().to_nf_ident(),
                 params: vec![(param_name.to_nf_ident(), conv_ty(param_type))],
                 ret_type: conv_ty(ret_type),
                 body: body,
             });
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf::Expr::Var(func_name.to_nf_ident())),
+            nf_left
+        }
+        _ => nf::Nf {
+            funcs: vec![],
+            body: Some(conv_expr(e)),
+        },
+    }
+}
+
+fn conv_expr(e: Expr) -> nf::Expr {
+    match e {
+        Expr::Const(lit) => nf::Expr::Const(conv_lit(lit)),
+        Expr::Var(name, typ, _) => match typ {
+            Type::Func(_, _) => nf::Expr::Var(name.to_nf_ident()),
+            _ => nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
+        },
+        Expr::Apply(box e1, box e2, _) => nf::Expr::Call(box conv_expr(e1), vec![conv_expr(e2)]),
+        Expr::Let(name, typ, box e1, box e2, _) => nf::Expr::Let(
+            name.to_nf_ident(),
+            if let Type::Func(_, _) = typ {
+                nf::Type::Pointer(box conv_ty(typ))
+            } else {
+                conv_ty(typ)
+            },
+            box conv_expr(e1),
+            box conv_expr(e2),
+        ),
+        Expr::LetRec(_, _, _, _, _) => unreachable!(), // `Expr::LetRec` occurs only with function
+        Expr::LetType(_, _, _) => unreachable!(),
+        Expr::If(box cond, box e1, box e2, _) => {
+            nf::Expr::If(box conv_expr(cond), box conv_expr(e1), box conv_expr(e2))
+        }
+        Expr::BinOp(op, box e1, box e2, _) => {
+            nf::Expr::BinOp(conv_binop(op), box conv_expr(e1), box conv_expr(e2))
+        }
+        Expr::FieldAccess(box e, typ, label, _) => {
+            if let Type::Record(fields) = typ {
+                let idx = fields
+                    .iter()
+                    .position(|(ref label_, _)| &label == label_)
+                    .unwrap();
+                let body = if let nf::Expr::Load(box body) = conv_expr(e) {
+                    body
+                } else {
+                    unreachable!()
+                };
+                nf::Expr::Load(box nf::Expr::TupleAt(box body, idx))
+            } else {
+                unreachable!()
             }
         }
-        Literal::Number(n) => nf::Nf {
-            funcs: vec![],
-            body: Some(nf::Expr::Const(nf::Literal::Int(n))),
-        },
-        Literal::Bool(b) => nf::Nf {
-            funcs: vec![],
-            body: Some(nf::Expr::Const(nf::Literal::Bool(b))),
-        },
-        Literal::Char(c) => nf::Nf {
-            funcs: vec![],
-            body: Some(nf::Expr::Const(nf::Literal::Char(c))),
-        },
-        Literal::Unit => nf::Nf {
-            funcs: vec![],
-            body: Some(nf::Expr::Const(nf::Literal::Int(0))), // dummy,
-        },
+        Expr::Println(box e) => nf::Expr::PrintNum(box conv_expr(e)),
+        Expr::EmptyMark => unreachable!(),
+    }
+}
+
+fn conv_lit(lit: Literal) -> nf::Literal {
+    match lit {
+        Literal::Func {
+            param_name: _,
+            param_type: _,
+            ret_type: _,
+            body: _,
+            pos: _,
+        } => unreachable!(),
+        Literal::Number(n) => nf::Literal::Int(n),
+        Literal::Bool(b) => nf::Literal::Bool(b),
+        Literal::Char(c) => nf::Literal::Char(c),
+        Literal::Unit => nf::Literal::Int(0), // dummy,
         Literal::Record(fields) => {
-            let mut funcs = vec![];
-            let elems = fields
-                .into_iter()
-                .map(|(_, e)| {
-                    let mut nf = conv_expr(e);
-                    funcs.append(&mut nf.funcs);
-                    nf.body.unwrap()
-                })
-                .collect();
-            nf::Nf {
-                funcs: funcs,
-                body: Some(nf::Expr::Const(nf::Literal::Tuple(elems))),
-            }
+            let elems = fields.into_iter().map(|(_, e)| conv_expr(e)).collect();
+            nf::Literal::Tuple(elems)
         }
     }
 }
@@ -268,7 +171,7 @@ pub fn codegen(expr: Expr, filename: &str) {
         .suffix(".ll")
         .tempfile()
         .expect("failed: create temporary file.");
-    let nf = conv_expr(expr);
+    let nf = conv_toplevel_expr(lambda_lifting::lift(expr));
     if let Err(err) = nf.codegen("output", &mut temp) {
         eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
         eprintln!(
@@ -290,6 +193,24 @@ pub fn codegen(expr: Expr, filename: &str) {
         eprintln!(
             "\u{001B}[31m[internal codegen error]\u{001B}[39m clang didn't terminate successfully"
         );
+        let stdout = std::str::from_utf8(&result.stdout)
+            .expect("unrecognized output")
+            .trim();
+        if !stdout.is_empty() {
+            eprintln!("stdout from `clang`:");
+            eprintln!("```");
+            eprintln!("{}", stdout);
+            eprintln!("```");
+        }
+        let stderr = std::str::from_utf8(&result.stderr)
+            .expect("unrecognized output")
+            .trim();
+        if !stderr.is_empty() {
+            eprintln!("stderr from `clang`:");
+            eprintln!("```");
+            eprintln!("{}", stderr);
+            eprintln!("```");
+        }
         eprintln!(
             "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
         );
