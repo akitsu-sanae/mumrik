@@ -165,38 +165,24 @@ fn conv_ty(ty: Type) -> nf::Type {
     }
 }
 
-pub fn codegen(expr: Expr, filename: &str) {
-    let mut temp = tempfile::Builder::new()
-        .suffix(".ll")
-        .tempfile()
-        .expect("failed: create temporary file.");
-    let nf = conv_toplevel_expr(lambda_lifting::lift(expr));
-    if let Err(err) = nf.codegen("output", &mut temp) {
-        eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
-        eprintln!(
-            "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
-        );
-        std::process::exit(-1);
-    }
+fn exec_command(command_name: &str, args: Vec<&str>) {
+    let mut command = std::process::Command::new(command_name);
+    command.args(args);
 
-    let temp_filename = temp.path().to_str().unwrap().to_string();
-
-    let result = std::process::Command::new("clang")
-        .arg(temp_filename)
-        .arg("-o")
-        .arg(filename)
+    let result = command
         .output()
-        .expect("failed to execute clang");
+        .unwrap_or_else(|_| panic!("failed to execute {}", command_name));
 
     if !result.status.success() {
         eprintln!(
-            "\u{001B}[31m[internal codegen error]\u{001B}[39m clang didn't terminate successfully"
+            "\u{001B}[31m[internal codegen error]\u{001B}[39m in {}",
+            command_name
         );
         let stdout = std::str::from_utf8(&result.stdout)
             .expect("unrecognized output")
             .trim();
         if !stdout.is_empty() {
-            eprintln!("stdout from `clang`:");
+            eprintln!("stdout from `{:?}`:", command);
             eprintln!("```");
             eprintln!("{}", stdout);
             eprintln!("```");
@@ -205,7 +191,7 @@ pub fn codegen(expr: Expr, filename: &str) {
             .expect("unrecognized output")
             .trim();
         if !stderr.is_empty() {
-            eprintln!("stderr from `clang`:");
+            eprintln!("stderr from `{:?}`:", command);
             eprintln!("```");
             eprintln!("{}", stderr);
             eprintln!("```");
@@ -215,4 +201,36 @@ pub fn codegen(expr: Expr, filename: &str) {
         );
         std::process::exit(-1);
     }
+}
+
+pub fn codegen(expr: Expr, filename: &str) {
+    let nf = conv_toplevel_expr(lambda_lifting::lift(expr));
+
+    let mut ll_file = tempfile::Builder::new()
+        .suffix(".ll")
+        .tempfile()
+        .expect("failed: create temporary file.");
+
+    if let Err(err) = nf.codegen("output", &mut ll_file) {
+        eprintln!("\u{001B}[31m[internal codegen error]\u{001B}[39m {}", err);
+        eprintln!(
+            "please report this issue to akitsu-sanae <akitsu.sanae@gmail.com>, the developer of mumrik language"
+        );
+        std::process::exit(-1);
+    }
+
+    let ll_filename = ll_file.path().to_str().unwrap().to_string();
+
+    let obj_file = tempfile::Builder::new()
+        .suffix(".o")
+        .tempfile()
+        .expect("failed: create temporary file.");
+
+    let obj_filename = obj_file.path().to_str().unwrap();
+
+    exec_command(
+        "llc",
+        vec!["-filetype=obj", ll_filename.as_str(), "-o", obj_filename],
+    );
+    exec_command("gcc", vec![obj_filename, "-o", filename]);
 }
