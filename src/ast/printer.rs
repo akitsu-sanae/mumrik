@@ -17,10 +17,10 @@ impl fmt::Display for Expr {
                 write!(f, "let {}: {} = {}; {}", name, typ, e1, e2)
             }
             Expr::LetRec(ref name, ref typ, box ref e1, box ref e2, _) => {
-                write!(f, "let {}: {} = {}; {}", name, typ, e1, e2)
+                write!(f, "let rec {}: {} = {}; {}", name, typ, e1, e2)
             }
             Expr::LetType(ref name, ref typ, box ref e) => {
-                write!(f, "let rec {} = {}; {}", name, typ, e)
+                write!(f, "let type {} = {}; {}", name, typ, e)
             }
             Expr::If(box cond, box e1, box e2, _) => {
                 write!(f, "if {} {{ {} }} else {{ {} }}", cond, e1, e2)
