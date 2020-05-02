@@ -30,15 +30,15 @@ fn conv_toplevel_expr(e: Expr) -> nf::Nf {
             box left,
             _,
         ) => {
-            let mut nf_left = conv_toplevel_expr(left);
-            let mut nf_body = conv_toplevel_expr(body);
-            nf_left.funcs.append(&mut nf_body.funcs);
+            let mut nf = conv_toplevel_expr(left);
+            let body = conv_expr(body);
             let body = if param_name.is_omitted_param_name() {
                 if let Type::Record(fields) = param_type.clone() {
                     let param_name = param_name.clone().to_nf_ident();
-                    fields.into_iter().enumerate().fold(
-                        nf_body.body.unwrap(),
-                        |acc, (n, (name, typ))| {
+                    fields
+                        .into_iter()
+                        .enumerate()
+                        .fold(body, |acc, (n, (name, typ))| {
                             nf::Expr::Let(
                                 name.to_nf_ident(),
                                 conv_ty(typ),
@@ -48,21 +48,20 @@ fn conv_toplevel_expr(e: Expr) -> nf::Nf {
                                 )),
                                 box acc,
                             )
-                        },
-                    )
+                        })
                 } else {
                     unreachable!()
                 }
             } else {
-                nf_body.body.unwrap()
+                body
             };
-            nf_left.funcs.push(nf::Func {
+            nf.funcs.push(nf::Func {
                 name: func_name.clone().to_nf_ident(),
                 params: vec![(param_name.to_nf_ident(), conv_ty(param_type))],
                 ret_type: conv_ty(ret_type),
                 body: body,
             });
-            nf_left
+            nf
         }
         _ => nf::Nf {
             funcs: vec![],
