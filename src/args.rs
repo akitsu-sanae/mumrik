@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 pub struct Args {
-    pub is_interp: bool,
     pub input_filename: String,
     pub output_filename: String,
 }
@@ -12,7 +11,6 @@ fn print_usage(program_name: &str) {
 USAGE: {} <filename...> [option...]
 options are:
     --output, -o <file>  Write output tp <file>, default: `a.out`
-    --interp, -i         Run mumrik interpreter, `--output` flag will be ignored
     --help, -h           Display this"#,
         program_name
     );
@@ -23,7 +21,6 @@ impl Args {
         let mut args: VecDeque<_> = std::env::args().collect();
         let program_name = args.pop_front().unwrap();
 
-        let mut is_interp = false;
         let mut input_filename = None;
         let mut output_filename = "./a.out".to_string();
 
@@ -31,8 +28,6 @@ impl Args {
             if arg.as_str() == "--help" || arg.as_str() == "-h" {
                 print_usage(program_name.as_str());
                 std::process::exit(0);
-            } else if arg.as_str() == "--interp" || arg.as_str() == "-i" {
-                is_interp = true;
             } else if arg.as_str() == "--output" || arg.as_str() == "-o" {
                 output_filename = args
                     .pop_front()
@@ -51,7 +46,6 @@ impl Args {
 
         let input_filename = input_filename.unwrap_or("main.mm".to_string());
         Args {
-            is_interp: is_interp,
             input_filename: input_filename,
             output_filename: output_filename,
         }

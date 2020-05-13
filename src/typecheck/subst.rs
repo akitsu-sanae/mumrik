@@ -3,6 +3,7 @@ use env::Env;
 use ident::Ident;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Subst(pub HashMap<Ident, Type>);
 
 impl Subst {

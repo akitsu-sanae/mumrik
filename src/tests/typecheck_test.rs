@@ -14,21 +14,33 @@ fn primitive_literal() {
     );
 
     assert_eq!(
-        typecheck::check(Expr::Const(Literal::Func {
+        typecheck::check(Expr::Func {
+            name: Ident::new("f"),
             param_name: Ident::new("x"),
             param_type: Type::Int,
             ret_type: Type::Int,
             body: box Expr::Const(Literal::Number(42)),
+            left: box Expr::Var(
+                Ident::new("f"),
+                Type::Func(box Type::Int, box Type::Int),
+                Position { start: 0, end: 0 }
+            ),
             pos: Position { start: 0, end: 0 }
-        })),
+        }),
         Ok((
-            Expr::Const(Literal::Func {
+            Expr::Func {
+                name: Ident::new("f"),
                 param_name: Ident::new("x"),
                 param_type: Type::Int,
                 ret_type: Type::Int,
                 body: box Expr::Const(Literal::Number(42)),
+                left: box Expr::Var(
+                    Ident::new("f"),
+                    Type::Func(box Type::Int, box Type::Int),
+                    Position { start: 0, end: 0 }
+                ),
                 pos: Position { start: 0, end: 0 }
-            }),
+            },
             Type::Func(box Type::Int, box Type::Int)
         ))
     );
@@ -36,62 +48,88 @@ fn primitive_literal() {
 
 #[test]
 fn apply() {
+    let func_name = Ident::fresh();
     assert_eq!(
         typecheck::check(Expr::Apply(
-            box Expr::Const(Literal::Func {
+            box Expr::Func {
+                name: func_name.clone(),
                 param_name: Ident::new("x"),
                 param_type: Type::Int,
                 ret_type: Type::Int,
                 body: box Expr::Var(
                     Ident::new("x"),
-                    Type::Var(Ident::new("<fresh>")),
+                    Type::Var(Ident::fresh()),
+                    Position { start: 0, end: 0 }
+                ),
+                left: box Expr::Var(
+                    func_name.clone(),
+                    Type::Func(box Type::Int, box Type::Int),
                     Position { start: 0, end: 0 }
                 ),
                 pos: Position { start: 0, end: 0 }
-            }),
+            },
             box Expr::Const(Literal::Number(42)),
             Position { start: 0, end: 0 }
         )),
         Ok((
             Expr::Apply(
-                box Expr::Const(Literal::Func {
+                box Expr::Func {
+                    name: func_name.clone(),
                     param_name: Ident::new("x"),
                     param_type: Type::Int,
                     ret_type: Type::Int,
                     body: box Expr::Var(Ident::new("x"), Type::Int, Position { start: 0, end: 0 }),
+                    left: box Expr::Var(
+                        func_name.clone(),
+                        Type::Func(box Type::Int, box Type::Int),
+                        Position { start: 0, end: 0 }
+                    ),
                     pos: Position { start: 0, end: 0 }
-                }),
+                },
                 box Expr::Const(Literal::Number(42)),
                 Position { start: 0, end: 0 }
             ),
-            Type::Int
+            Type::Int,
         ))
     );
+
     assert_eq!(
         typecheck::check(Expr::Apply(
-            box Expr::Const(Literal::Func {
+            box Expr::Func {
+                name: func_name.clone(),
                 param_name: Ident::new("x"),
                 param_type: Type::Var(Ident::new("a")),
                 ret_type: Type::Var(Ident::new("b")),
                 body: box Expr::Var(
                     Ident::new("x"),
-                    Type::Var(Ident::new("<fresh>")),
+                    Type::Var(Ident::fresh()),
+                    Position { start: 0, end: 0 }
+                ),
+                left: box Expr::Var(
+                    func_name.clone(),
+                    Type::Var(Ident::new("d")),
                     Position { start: 0, end: 0 }
                 ),
                 pos: Position { start: 0, end: 0 }
-            }),
+            },
             box Expr::Const(Literal::Number(42)),
             Position { start: 0, end: 0 }
         )),
         Ok((
             Expr::Apply(
-                box Expr::Const(Literal::Func {
+                box Expr::Func {
+                    name: func_name.clone(),
                     param_name: Ident::new("x"),
                     param_type: Type::Int,
                     ret_type: Type::Int,
                     body: box Expr::Var(Ident::new("x"), Type::Int, Position { start: 0, end: 0 }),
+                    left: box Expr::Var(
+                        func_name.clone(),
+                        Type::Var(Ident::new("d")),
+                        Position { start: 0, end: 0 }
+                    ),
                     pos: Position { start: 0, end: 0 }
-                }),
+                },
                 box Expr::Const(Literal::Number(42)),
                 Position { start: 0, end: 0 }
             ),
@@ -104,12 +142,14 @@ fn apply() {
 fn binop_expr() {
     let x_var_before = Expr::Var(
         Ident::new("x"),
-        Type::Var(Ident::new("<fresh>")),
+        Type::Var(Ident::fresh()),
         Position { start: 0, end: 0 },
     );
     let x_var_after = Expr::Var(Ident::new("x"), Type::Int, Position { start: 0, end: 0 });
+    let func_name = Ident::fresh();
     assert_eq!(
-        typecheck::check(Expr::Const(Literal::Func {
+        typecheck::check(Expr::Func {
+            name: func_name.clone(),
             param_name: Ident::new("x"),
             param_type: Type::Var(Ident::new("a")),
             ret_type: Type::Var(Ident::new("b")),
@@ -119,21 +159,32 @@ fn binop_expr() {
                 box x_var_before.clone(),
                 Position { start: 0, end: 0 }
             ),
+            left: box Expr::Var(
+                func_name.clone(),
+                Type::Var(Ident::new("c")),
+                Position { start: 0, end: 0 }
+            ),
             pos: Position { start: 0, end: 0 }
-        })),
+        }),
         Ok((
-            Expr::Const(Literal::Func {
+            Expr::Func {
+                name: func_name.clone(),
                 param_name: Ident::new("x"),
                 param_type: Type::Int,
                 ret_type: Type::Int,
                 body: box Expr::BinOp(
                     BinOp::Add,
-                    box x_var_after.clone(),
-                    box x_var_after.clone(),
+                    box x_var_before.clone(),
+                    box x_var_before.clone(),
+                    Position { start: 0, end: 0 }
+                ),
+                left: box Expr::Var(
+                    func_name.clone(),
+                    Type::Func(box Type::Int, box Type::Int),
                     Position { start: 0, end: 0 }
                 ),
                 pos: Position { start: 0, end: 0 }
-            }),
+            },
             Type::Func(box Type::Int, box Type::Int)
         ))
     );
@@ -141,39 +192,55 @@ fn binop_expr() {
 
 #[test]
 fn if_expr() {
+    let func_name1 = Ident::fresh();
+    let func_name2 = Ident::fresh();
     assert_eq!(
-        typecheck::check(Expr::Const(Literal::Func {
+        typecheck::check(Expr::Func {
+            name: func_name1.clone(),
             param_name: Ident::new("x"),
             param_type: Type::Var(Ident::new("a1")),
             ret_type: Type::Var(Ident::new("b1")),
-            body: box Expr::Const(Literal::Func {
+            body: box Expr::Func {
+                name: func_name2.clone(),
                 param_name: Ident::new("y"),
                 param_type: Type::Var(Ident::new("a2")),
-                ret_type: Type::Var(Ident::new("b1")),
+                ret_type: Type::Var(Ident::new("b2")),
                 body: box Expr::If(
                     box Expr::Var(
                         Ident::new("x"),
-                        Type::Var(Ident::new("<fresh-0>")),
+                        Type::Var(Ident::fresh()),
                         Position { start: 0, end: 1 }
                     ),
                     box Expr::Var(
                         Ident::new("y"),
-                        Type::Var(Ident::new("<fresh-1>")),
+                        Type::Var(Ident::fresh()),
                         Position { start: 0, end: 2 }
                     ),
                     box Expr::Const(Literal::Number(42)),
                     Position { start: 0, end: 3 }
                 ),
-                pos: Position { start: 0, end: 4 }
-            }),
-            pos: Position { start: 0, end: 5 }
-        })),
+                left: box Expr::Var(
+                    func_name2.clone(),
+                    Type::Var(Ident::fresh()),
+                    Position { start: 0, end: 0 }
+                ),
+                pos: Position { start: 0, end: 0 }
+            },
+            left: box Expr::Var(
+                func_name1.clone(),
+                Type::Var(Ident::fresh()),
+                Position { start: 0, end: 0 }
+            ),
+            pos: Position { start: 0, end: 0 },
+        }),
         Ok((
-            Expr::Const(Literal::Func {
+            Expr::Func {
+                name: func_name1.clone(),
                 param_name: Ident::new("x"),
                 param_type: Type::Bool,
                 ret_type: Type::Int,
-                body: box Expr::Const(Literal::Func {
+                body: box Expr::Func {
+                    name: func_name2.clone(),
                     param_name: Ident::new("y"),
                     param_type: Type::Int,
                     ret_type: Type::Int,
@@ -183,10 +250,20 @@ fn if_expr() {
                         box Expr::Const(Literal::Number(42)),
                         Position { start: 0, end: 3 }
                     ),
-                    pos: Position { start: 0, end: 4 }
-                }),
-                pos: Position { start: 0, end: 5 }
-            }),
+                    left: box Expr::Var(
+                        func_name2.clone(),
+                        Type::Func(box Type::Int, box Type::Int),
+                        Position { start: 0, end: 0 }
+                    ),
+                    pos: Position { start: 0, end: 0 }
+                },
+                left: box Expr::Var(
+                    func_name1.clone(),
+                    Type::Func(box Type::Bool, box Type::Func(box Type::Int, box Type::Int)),
+                    Position { start: 0, end: 0 }
+                ),
+                pos: Position { start: 0, end: 0 },
+            },
             Type::Func(box Type::Bool, box Type::Int)
         ))
     );

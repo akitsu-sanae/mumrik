@@ -1,35 +1,18 @@
 use ast::*;
 
-mod lambda_lifting;
+mod auxprocess;
 
 fn conv_toplevel_expr(e: Expr) -> nf::Nf {
     match e {
-        Expr::Let(
-            func_name,
-            _,
-            box Expr::Const(Literal::Func {
-                param_name,
-                param_type,
-                ret_type,
-                box body,
-                pos: _,
-            }),
+        Expr::Func {
+            name: func_name,
+            param_name,
+            param_type,
+            ret_type,
+            box body,
             box left,
-            _,
-        )
-        | Expr::LetRec(
-            func_name,
-            _,
-            box Expr::Const(Literal::Func {
-                param_name,
-                param_type,
-                ret_type,
-                box body,
-                pos: _,
-            }),
-            box left,
-            _,
-        ) => {
+            pos: _,
+        } => {
             let mut nf = conv_toplevel_expr(left);
             let body = conv_expr(body);
             let body = if param_name.is_omitted_param_name() {
@@ -77,6 +60,7 @@ fn conv_expr(e: Expr) -> nf::Expr {
             Type::Func(_, _) => nf::Expr::Var(name.to_nf_ident()),
             _ => nf::Expr::Load(box nf::Expr::Var(name.to_nf_ident())),
         },
+        Expr::Func { .. } => unreachable!(),
         Expr::Apply(box e1, box e2, _) => nf::Expr::Call(box conv_expr(e1), vec![conv_expr(e2)]),
         Expr::Let(name, typ, box e1, box e2, _) => nf::Expr::Let(
             name.to_nf_ident(),
@@ -88,7 +72,6 @@ fn conv_expr(e: Expr) -> nf::Expr {
             box conv_expr(e1),
             box conv_expr(e2),
         ),
-        Expr::LetRec(_, _, _, _, _) => unreachable!(), // `Expr::LetRec` occurs only with function
         Expr::LetType(_, _, _) => unreachable!(),
         Expr::If(box cond, box e1, box e2, _) => {
             nf::Expr::If(box conv_expr(cond), box conv_expr(e1), box conv_expr(e2))
@@ -100,7 +83,7 @@ fn conv_expr(e: Expr) -> nf::Expr {
             if let Type::Record(fields) = typ {
                 let idx = fields
                     .iter()
-                    .position(|(ref label_, _)| &label == label_)
+                    .position(|(label_, _)| &label == label_)
                     .unwrap();
                 let body = if let nf::Expr::Load(box body) = conv_expr(e) {
                     body
@@ -119,13 +102,6 @@ fn conv_expr(e: Expr) -> nf::Expr {
 
 fn conv_lit(lit: Literal) -> nf::Literal {
     match lit {
-        Literal::Func {
-            param_name: _,
-            param_type: _,
-            ret_type: _,
-            body: _,
-            pos: _,
-        } => unreachable!(),
         Literal::Number(n) => nf::Literal::Int(n),
         Literal::Bool(b) => nf::Literal::Bool(b),
         Literal::Char(c) => nf::Literal::Char(c),
@@ -160,8 +136,7 @@ fn conv_ty(ty: Type) -> nf::Type {
         Type::Record(fields) => {
             nf::Type::Tuple(fields.into_iter().map(|(_, typ)| conv_ty(typ)).collect())
         }
-        Type::Var(_) => unreachable!(),
-        Type::EmptyMark => unreachable!(),
+        Type::Var(_) | Type::EmptyMark => unreachable!(),
     }
 }
 
@@ -204,7 +179,7 @@ fn exec_command(command_name: &str, args: Vec<&str>) {
 }
 
 pub fn codegen(expr: Expr, filename: &str) {
-    let nf = conv_toplevel_expr(lambda_lifting::lift(expr));
+    let nf = conv_toplevel_expr(auxprocess::pre(expr));
 
     let mut ll_file = tempfile::Builder::new()
         .suffix(".ll")

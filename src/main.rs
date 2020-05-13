@@ -9,7 +9,6 @@ mod args;
 mod ast;
 mod codegen;
 mod env;
-mod eval;
 mod ident;
 mod parser;
 mod typecheck;
@@ -20,12 +19,8 @@ mod tests;
 
 fn main() {
     let args = args::Args::new();
-    let (expr, typ) = read_file(&args.input_filename);
-    if args.is_interp {
-        println!("{}: {}", eval::expr(expr), typ);
-    } else {
-        codegen::codegen(expr, &args.output_filename);
-    }
+    let (expr, _) = read_file(&args.input_filename);
+    codegen::codegen(expr, &args.output_filename);
 }
 
 fn read_file(filename: &str) -> (ast::Expr, ast::Type) {
@@ -65,9 +60,23 @@ fn read_file(filename: &str) -> (ast::Expr, ast::Type) {
                 ast::Expr::Let(name, typ, box e, box ast::Expr::EmptyMark, pos) => {
                     ast::Expr::Let(name, typ, box e, box acc, pos)
                 }
-                ast::Expr::LetRec(name, typ, box e, box ast::Expr::EmptyMark, pos) => {
-                    ast::Expr::LetRec(name, typ, box e, box acc, pos)
-                }
+                ast::Expr::Func {
+                    name,
+                    param_name,
+                    param_type,
+                    ret_type,
+                    box body,
+                    left: box ast::Expr::EmptyMark,
+                    pos,
+                } => ast::Expr::Func {
+                    name: name,
+                    param_name: param_name,
+                    param_type: param_type,
+                    ret_type: ret_type,
+                    body: box body,
+                    left: box acc,
+                    pos: pos,
+                },
                 _ => unreachable!(),
             }
         });

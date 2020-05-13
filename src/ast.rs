@@ -1,4 +1,5 @@
 use ident::Ident;
+use std::collections::HashMap;
 
 mod free_vars;
 mod is_occurs;
@@ -11,6 +12,12 @@ pub struct Position {
     pub end: usize,
 }
 
+impl Position {
+    pub fn dummy() -> Self {
+        Position { start: 0, end: 0 }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
     pub imports: Vec<Ident>,
@@ -21,9 +28,17 @@ pub struct Program {
 pub enum Expr {
     Const(Literal),
     Var(Ident, Type, Position),
+    Func {
+        name: Ident,
+        param_name: Ident,
+        param_type: Type,
+        ret_type: Type,
+        body: Box<Expr>,
+        left: Box<Expr>,
+        pos: Position,
+    },
     Apply(Box<Expr>, Box<Expr>, Position),
     Let(Ident, Type, Box<Expr>, Box<Expr>, Position),
-    LetRec(Ident, Type, Box<Expr>, Box<Expr>, Position),
     LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
@@ -34,18 +49,11 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-    Func {
-        param_name: Ident,
-        param_type: Type,
-        ret_type: Type,
-        body: Box<Expr>,
-        pos: Position,
-    },
     Number(i32),
     Bool(bool),
     Char(char),
     Unit,
-    Record(Vec<(Ident, Expr)>),
+    Record(HashMap<Ident, Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +75,7 @@ pub enum Type {
     Char,
     Unit,
     Func(Box<Type>, Box<Type>),
-    Record(Vec<(Ident, Type)>),
+    Record(HashMap<Ident, Type>),
     Var(Ident),
     EmptyMark,
 }

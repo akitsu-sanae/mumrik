@@ -52,7 +52,8 @@ fn apply() {
         Ok(Program {
             imports: vec![],
             expr: Apply(
-                box Const(Func {
+                box Func {
+                    name: Ident::new("<fresh-expected>"),
                     param_name: Ident::new("x"),
                     param_type: Type::Int,
                     ret_type: Type::Int,
@@ -61,8 +62,13 @@ fn apply() {
                         Type::Var(Ident::new("<fresh-expected>")),
                         Position { start: 20, end: 21 }
                     ),
+                    left: box Var(
+                        Ident::new("<fresh-expected>"),
+                        Type::Func(box Type::Int, box Type::Int),
+                        Position { start: 1, end: 21 }
+                    ),
                     pos: Position { start: 1, end: 21 }
-                }),
+                },
                 box Const(Number(1)),
                 Position { start: 0, end: 24 }
             )
@@ -224,7 +230,8 @@ f 13
             expr: Let(
                 Ident::new("f"),
                 Type::Func(box Type::Int, box Type::Int),
-                box Const(Func {
+                box Func {
+                    name: Ident::new("<fresh-expected>"),
                     param_name: Ident::new("a"),
                     param_type: Type::Int,
                     ret_type: Type::Int,
@@ -238,8 +245,13 @@ f 13
                         box Const(Number(12)),
                         Position { start: 27, end: 29 }
                     ),
+                    left: box Var(
+                        Ident::new("<fresh-expected>"),
+                        Type::Func(box Type::Int, box Type::Int),
+                        Position { start: 1, end: 34 }
+                    ),
                     pos: Position { start: 1, end: 34 },
-                }),
+                },
                 box Apply(
                     box Var(
                         Ident::new("f"),
@@ -272,73 +284,69 @@ fib 3
         ),
         Ok(Program {
             imports: vec![],
-            expr: LetRec(
-                Ident::new("fib"),
-                Type::Func(box Type::Int, box Type::Int),
-                box Const(Func {
-                    param_name: Ident::new("x"),
-                    param_type: Type::Int,
-                    ret_type: Type::Int,
-                    body: box If(
-                        box BinOp(
-                            ast::BinOp::Lt,
-                            box Var(
-                                Ident::new("x"),
-                                Type::Var(Ident::new("<fresh-expected>")),
-                                Position { start: 34, end: 36 }
-                            ),
-                            box Const(Number(2)),
-                            Position { start: 36, end: 38 }
+            expr: Func {
+                name: Ident::new("fib"),
+                param_name: Ident::new("x"),
+                param_type: Type::Int,
+                ret_type: Type::Int,
+                body: box If(
+                    box BinOp(
+                        ast::BinOp::Lt,
+                        box Var(
+                            Ident::new("x"),
+                            Type::Var(Ident::new("<fresh-expected>")),
+                            Position { start: 34, end: 36 }
                         ),
-                        box Const(Number(1)),
-                        box BinOp(
-                            ast::BinOp::Add,
-                            box Apply(
-                                box Var(
-                                    Ident::new("fib"),
-                                    Type::Var(Ident::new("<fresh-expected>")),
-                                    Position { start: 73, end: 77 }
-                                ),
-                                box BinOp(
-                                    ast::BinOp::Sub,
-                                    box Var(
-                                        Ident::new("x"),
-                                        Type::Var(Ident::new("<fresh-expected>")),
-                                        Position { start: 78, end: 79 }
-                                    ),
-                                    box Const(Number(1)),
-                                    Position { start: 79, end: 80 }
-                                ),
-                                Position { start: 73, end: 83 }
-                            ),
-                            box Apply(
-                                box Var(
-                                    Ident::new("fib"),
-                                    Type::Var(Ident::new("<fresh-expected>")),
-                                    Position { start: 85, end: 89 }
-                                ),
-                                box BinOp(
-                                    ast::BinOp::Sub,
-                                    box Var(
-                                        Ident::new("x"),
-                                        Type::Var(Ident::new("<fresh-expected>")),
-                                        Position { start: 90, end: 91 }
-                                    ),
-                                    box Const(Number(2)),
-                                    Position { start: 91, end: 92 }
-                                ),
-                                Position { start: 85, end: 99 }
-                            ),
-                            Position { start: 83, end: 85 }
-                        ),
-                        Position {
-                            start: 31,
-                            end: 101
-                        }
+                        box Const(Number(2)),
+                        Position { start: 36, end: 38 }
                     ),
-                    pos: Position { start: 1, end: 103 }
-                }),
-                box Apply(
+                    box Const(Number(1)),
+                    box BinOp(
+                        ast::BinOp::Add,
+                        box Apply(
+                            box Var(
+                                Ident::new("fib"),
+                                Type::Var(Ident::new("<fresh-expected>")),
+                                Position { start: 73, end: 77 }
+                            ),
+                            box BinOp(
+                                ast::BinOp::Sub,
+                                box Var(
+                                    Ident::new("x"),
+                                    Type::Var(Ident::new("<fresh-expected>")),
+                                    Position { start: 78, end: 79 }
+                                ),
+                                box Const(Number(1)),
+                                Position { start: 79, end: 80 }
+                            ),
+                            Position { start: 73, end: 83 }
+                        ),
+                        box Apply(
+                            box Var(
+                                Ident::new("fib"),
+                                Type::Var(Ident::new("<fresh-expected>")),
+                                Position { start: 85, end: 89 }
+                            ),
+                            box BinOp(
+                                ast::BinOp::Sub,
+                                box Var(
+                                    Ident::new("x"),
+                                    Type::Var(Ident::new("<fresh-expected>")),
+                                    Position { start: 90, end: 91 }
+                                ),
+                                box Const(Number(2)),
+                                Position { start: 91, end: 92 }
+                            ),
+                            Position { start: 85, end: 99 }
+                        ),
+                        Position { start: 83, end: 85 }
+                    ),
+                    Position {
+                        start: 31,
+                        end: 101
+                    }
+                ),
+                left: box Apply(
                     box Var(
                         Ident::new("fib"),
                         Type::Var(Ident::new("<fresh-expected>")),
@@ -353,8 +361,8 @@ fib 3
                         end: 109
                     }
                 ),
-                Position { start: 1, end: 103 }
-            )
+                pos: Position { start: 1, end: 103 }
+            }
         })
     );
 }

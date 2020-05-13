@@ -5,27 +5,6 @@ use std::collections::HashMap;
 impl Expr {
     pub fn free_term_vars(&self) -> HashMap<Ident, Type> {
         match self {
-            Expr::Const(Literal::Func {
-                ref param_name,
-                ref param_type,
-                ret_type: _,
-                box ref body,
-                pos: _,
-            }) => {
-                let mut vars = body.free_term_vars();
-                if param_name.is_omitted_param_name() {
-                    if let Type::Record(ref fields) = param_type {
-                        for (ref label, _) in fields.iter() {
-                            vars.remove(label);
-                        }
-                    } else {
-                        unreachable!()
-                    }
-                } else {
-                    vars.remove(param_name);
-                }
-                vars
-            }
             Expr::Const(Literal::Record(ref fields)) => {
                 let mut vars = HashMap::new();
                 for (_, ref e) in fields.iter() {
@@ -39,6 +18,31 @@ impl Expr {
                 vars.insert(name.clone(), typ.clone());
                 vars
             }
+            Expr::Func {
+                name,
+                param_name,
+                param_type,
+                ret_type: _,
+                box body,
+                box left,
+                pos: _,
+            } => {
+                let mut vars = body.free_term_vars();
+                if param_name.is_omitted_param_name() {
+                    if let Type::Record(ref fields) = param_type {
+                        for (ref label, _) in fields.iter() {
+                            vars.remove(label);
+                        }
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    vars.remove(param_name);
+                }
+                vars.extend(left.free_term_vars());
+                vars.remove(name);
+                vars
+            }
             Expr::Apply(box ref e1, box ref e2, _) => {
                 let mut vars = HashMap::new();
                 vars.extend(e1.free_term_vars());
@@ -50,13 +54,6 @@ impl Expr {
                 vars.extend(e2.free_term_vars());
                 vars.remove(name);
                 vars.extend(e1.free_term_vars());
-                vars
-            }
-            Expr::LetRec(ref name, _, box ref e1, box ref e2, _) => {
-                let mut vars = HashMap::new();
-                vars.extend(e1.free_term_vars());
-                vars.extend(e2.free_term_vars());
-                vars.remove(name);
                 vars
             }
             Expr::LetType(_, _, box ref e) => e.free_term_vars(),

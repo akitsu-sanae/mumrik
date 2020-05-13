@@ -35,9 +35,7 @@ fn unify(queue: Vec<(Type, Type)>, pos: &Position) -> Result<Subst, Error> {
                     queue.push_back((typ11, typ21));
                     queue.push_back((typ12, typ22));
                 }
-                (Type::Record(mut fields1), Type::Record(mut fields2)) => {
-                    fields1.sort_by(|a, b| a.0.cmp(&b.0));
-                    fields2.sort_by(|a, b| a.0.cmp(&b.0));
+                (Type::Record(fields1), Type::Record(fields2)) => {
                     if fields1.len() != fields2.len() {
                         return Err(Error::UnmatchType {
                             pos: pos.clone(),
@@ -120,6 +118,37 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
                 })
             }
         }
+        Expr::Func {
+            ref name,
+            ref param_name,
+            ref param_type,
+            ref ret_type,
+            box ref body,
+            box ref left,
+            ref pos,
+        } => {
+            let env = env.add(
+                name.clone(),
+                Type::Func(box param_type.clone(), box ret_type.clone()),
+            );
+            let (left_ty, subst1) = check_expr(left, &env)?;
+            let env = if param_name.is_omitted_param_name() {
+                if let Type::Record(fields) = param_type {
+                    fields
+                        .iter()
+                        .fold(env, |acc, (name, typ)| acc.add(name.clone(), typ.clone()))
+                } else {
+                    unreachable!()
+                }
+            } else {
+                env.add(param_name.clone(), param_type.clone())
+            };
+            let (body_ty, subst2) = check_expr(body, &env)?;
+            let subst3 = unify(vec![(ret_type.clone(), body_ty)], pos)?;
+            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
+            let left_ty = subst.apply_type(left_ty);
+            Ok((left_ty, subst))
+        }
         Expr::Apply(box ref e1, box ref e2, ref pos) => {
             let (ty1, subst1) = check_expr(e1, env)?;
             let (ty2, subst2) = check_expr(e2, env)?;
@@ -134,15 +163,6 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
             let env = env.add(name.clone(), ty1.clone());
             let (ty2, subst2) = check_expr(e2, &env)?;
             let subst3 = unify(vec![(typ.clone(), ty1)], pos)?;
-            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
-            let ty2 = subst.apply_type(ty2);
-            Ok((ty2, subst))
-        }
-        Expr::LetRec(ref name, ref ty, box ref e1, box ref e2, ref pos) => {
-            let env = env.add(name.clone(), ty.clone());
-            let (ty1, subst1) = check_expr(e1, &env)?;
-            let subst2 = unify(vec![(ty.clone(), ty1)], pos)?;
-            let (ty2, subst3) = check_expr(e2, &env)?;
             let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
             let ty2 = subst.apply_type(ty2);
             Ok((ty2, subst))
@@ -204,31 +224,6 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
 
 fn check_literal(lit: &Literal, env: &Env<Type>) -> Result<(Type, Subst), Error> {
     match lit {
-        Literal::Func {
-            ref param_name,
-            ref param_type,
-            ref ret_type,
-            box ref body,
-            ref pos,
-        } => {
-            let env = if param_name.is_omitted_param_name() {
-                if let Type::Record(fields) = param_type {
-                    fields.iter().fold(env.clone(), |acc, (name, typ)| {
-                        acc.add(name.clone(), typ.clone())
-                    })
-                } else {
-                    unreachable!()
-                }
-            } else {
-                env.add(param_name.clone(), param_type.clone())
-            };
-            let (body_ty, subst1) = check_expr(body, &env)?;
-            let subst2 = unify(vec![(ret_type.clone(), body_ty)], pos)?;
-            let subst = Subst::compose(subst1, subst2);
-            let param_type = subst.apply_type(param_type.clone());
-            let ret_type = subst.apply_type(ret_type.clone());
-            Ok((Type::Func(box param_type, box ret_type), subst))
-        }
         Literal::Number(_) => Ok((Type::Int, Subst::new())),
         Literal::Bool(_) => Ok((Type::Bool, Subst::new())),
         Literal::Char(_) => Ok((Type::Char, Subst::new())),

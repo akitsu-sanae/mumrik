@@ -12,12 +12,22 @@ impl fmt::Display for Expr {
         match self {
             Expr::Const(ref lit) => write!(f, "{}", lit),
             Expr::Var(ref name, ref typ, _) => write!(f, "{} as {}", name, typ),
+            Expr::Func {
+                name,
+                param_name,
+                param_type,
+                ret_type,
+                box body,
+                box left,
+                pos: _,
+            } => write!(
+                f,
+                "let rec {} = (func {}:{} :{} => {}); {}",
+                name, param_name, param_type, ret_type, body, left
+            ),
             Expr::Apply(box ref e1, box ref e2, _) => write!(f, "({}) ({})", e1, e2),
             Expr::Let(ref name, ref typ, box ref e1, box ref e2, _) => {
                 write!(f, "let {}: {} = {}; {}", name, typ, e1, e2)
-            }
-            Expr::LetRec(ref name, ref typ, box ref e1, box ref e2, _) => {
-                write!(f, "let rec {}: {} = {}; {}", name, typ, e1, e2)
             }
             Expr::LetType(ref name, ref typ, box ref e) => {
                 write!(f, "let type {} = {}; {}", name, typ, e)
@@ -36,17 +46,6 @@ impl fmt::Display for Expr {
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Literal::Func {
-                param_name,
-                param_type,
-                ret_type,
-                box body,
-                pos: _,
-            } => write!(
-                f,
-                "func {}: {} :{} => {}",
-                param_name, param_type, ret_type, body
-            ),
             Literal::Number(ref n) => write!(f, "{}", n),
             Literal::Bool(ref b) => write!(f, "{}", b),
             Literal::Char(ref c) => write!(f, "{}", c),
