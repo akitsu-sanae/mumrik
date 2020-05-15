@@ -264,6 +264,13 @@ rule ident() -> Ident
     = !IS_KEYWORD() s:$(quiet!{['a'..='z'|'A'..='Z'|'_']['a'..='z'|'A'..='Z'|'0'..='9'|'_']*}) __ { Ident::new(s) }
     / expected!("<identifier>")
 
+rule __()
+    = (WHITE_SPACE() / comment())*
+
+rule comment()
+    = "//" (!"\n" [_])* "\n"  // line comment
+    / "/*" (!"*/" [_])* "*/"  // block comment
+
 rule IS_KEYWORD()
     = TYPE() / ENUM() / MATCH() / LET() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN() / IMPORT()
 
@@ -285,6 +292,7 @@ rule UNIT_V() = "unit" !ident() __
 rule PRINTLN() = "println" !ident() __
 rule IMPORT() = "import" !ident() __
 
+rule WHITE_SPACE() = [' '|'\t'|'\r'|'\n']
 rule EQUAL() = "=" __
 rule COMMA() = "," __
 rule DOT() = "." __
@@ -309,8 +317,6 @@ rule LEFT_SQUARE_BRACKET() = "[" __
 rule RIGHT_SQUARE_BRACKET() = "]" __
 rule LEFT_ANGLE_BRACKET() = "<" __
 rule RIGHT_ANGLE_BRACKET() = ">" __
-
-rule __() = [' '|'\t'|'\r'|'\n']*
 
 });
 
