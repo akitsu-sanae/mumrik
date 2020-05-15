@@ -16,3 +16,7 @@ pub fn pos_to_location(src: &str, mut pos: usize) -> (usize, usize) {
     }
     (line, column)
 }
+
+pub fn alert(msg: &str) -> String {
+    format!("\u{001B}[31m{}\u{001B}[39m", msg)
+}
