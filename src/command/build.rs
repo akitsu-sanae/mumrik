@@ -12,7 +12,7 @@ pub struct BuildCommand {
 }
 
 impl BuildCommand {
-    pub fn parse(program_name: &str, mut args: VecDeque<String>) -> Self {
+    pub fn parse(program_name: &str, mut args: VecDeque<String>) -> Box<dyn Command> {
         let mut input_filename = None;
         let mut output_filename = "./a.out".to_string();
 
@@ -52,8 +52,8 @@ filename: input mumrik program filename"#,
             }
         }
 
-        let input_filename = input_filename.unwrap_or("./src/main.mm".to_string());
-        BuildCommand {
+        let input_filename = input_filename.unwrap_or("./main.mm".to_string());
+        box BuildCommand {
             input_filename: input_filename,
             output_filename: output_filename,
         }
@@ -61,7 +61,7 @@ filename: input mumrik program filename"#,
 }
 
 impl Command for BuildCommand {
-    fn work(self) {
+    fn work(self: Box<BuildCommand>) {
         let (expr, _) = read_file(&self.input_filename);
         codegen::codegen(expr, &self.output_filename);
     }

@@ -2,17 +2,19 @@ use std::collections::VecDeque;
 use util;
 
 mod build;
+mod new_;
 
 pub trait Command {
-    fn work(self);
+    fn work(self: Box<Self>);
 }
 
-pub fn parse_toplevel(mut args: VecDeque<String>) -> impl Command {
+pub fn parse_toplevel(mut args: VecDeque<String>) -> Box<dyn Command> {
     let program_name = args.pop_front().unwrap();
     let subcommand_name = args.pop_front();
     let subcommand_name = subcommand_name.as_ref().map(String::as_str);
     match subcommand_name {
         Some("build") => build::BuildCommand::parse(&program_name, args),
+        Some("new") => new_::NewCommand::parse(&program_name, args),
         Some("--help") | Some("-h") | None => {
             println!(
                 r#"mumrik : a programming language

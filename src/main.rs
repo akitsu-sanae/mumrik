@@ -20,7 +20,6 @@ use std::collections::VecDeque;
 mod tests;
 
 fn main() {
-    use command::Command;
     let args: VecDeque<_> = std::env::args().collect();
     command::parse_toplevel(args).work();
 }
