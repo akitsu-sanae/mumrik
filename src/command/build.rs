@@ -13,7 +13,7 @@ pub struct BuildCommand {
 }
 
 impl BuildCommand {
-    pub fn parse(program_name: &str, mut args: VecDeque<String>) -> Box<dyn Command> {
+    pub fn parse(program_name: String, mut args: VecDeque<String>) -> Box<dyn Command> {
         let mut src = None;
         let mut output = None;
 
