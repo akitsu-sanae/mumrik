@@ -1,20 +1,21 @@
 use ast;
 use codegen;
 use command::Command;
+use config;
 use parser;
 use std::collections::VecDeque;
 use typecheck;
 use util;
 
 pub struct BuildCommand {
-    pub input_filename: String,
-    pub output_filename: String,
+    pub src: Option<String>,
+    pub output: Option<String>,
 }
 
 impl BuildCommand {
     pub fn parse(program_name: &str, mut args: VecDeque<String>) -> Box<dyn Command> {
-        let mut input_filename = None;
-        let mut output_filename = "./a.out".to_string();
+        let mut src = None;
+        let mut output = None;
 
         while let Some(arg) = args.pop_front() {
             if arg.as_str() == "--help" || arg.as_str() == "-h" {
@@ -31,39 +32,48 @@ filename: input mumrik program filename"#,
                 );
                 std::process::exit(0);
             } else if arg.as_str() == "--output" || arg.as_str() == "-o" {
-                output_filename = args.pop_front().unwrap_or_else(|| {
+                output = Some(args.pop_front().unwrap_or_else(|| {
                     panic!(
                         "{}: filename is required after `--output` or -o`",
                         util::alert("error")
                     )
-                });
+                }));
             } else if arg.as_str().starts_with("--output=") {
-                output_filename = arg[9..].to_string();
+                output = Some(arg[9..].to_string());
             } else if arg.as_str().starts_with("-o=") {
-                output_filename = arg[3..].to_string();
-            } else if input_filename.is_some() {
+                output = Some(arg[3..].to_string());
+            } else if src.is_some() {
                 panic!(
                     "{}: too many command line argument `{}`",
                     util::alert("error"),
                     arg
                 );
             } else {
-                input_filename = Some(arg);
+                src = Some(arg);
             }
         }
 
-        let input_filename = input_filename.unwrap_or("./main.mm".to_string());
         box BuildCommand {
-            input_filename: input_filename,
-            output_filename: output_filename,
+            src: src,
+            output: output,
         }
     }
 }
 
 impl Command for BuildCommand {
     fn work(self: Box<BuildCommand>) {
-        let (expr, _) = read_file(&self.input_filename);
-        codegen::codegen(expr, &self.output_filename);
+        let src = if let Some(src) = self.src {
+            src
+        } else {
+            config::CONFIG.lock().unwrap().build.src.clone()
+        };
+        let output = if let Some(output) = self.output {
+            output
+        } else {
+            config::CONFIG.lock().unwrap().build.output.clone()
+        };
+        let (expr, _) = read_file(&src);
+        codegen::codegen(expr, &output);
     }
 }
 

@@ -105,7 +105,7 @@ fib 8"#,
             br#"
 [build]
 src = "./src/main.mm"
-output = "./build/output"#,
+output = "./build/output""#,
         )
         .unwrap_or_else(|err| {
             eprintln!(

@@ -7,5 +7,8 @@ authors = ["akitsu <akitsu.sanae@gmail.com>"]
 peg = "0.6.2"
 lazy_static = "1.4.0"
 tempfile = "3.1.0"
+toml = "0.5"
+serde_derive = "1.0"
+serde = "1.0"
 nf2llvmir = { git = "https://github.com/akitsu-sanae/nf2llvmir" }
 
