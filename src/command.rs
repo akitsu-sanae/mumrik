@@ -3,6 +3,7 @@ use util;
 
 mod build;
 mod new_;
+mod run;
 
 pub trait Command {
     fn work(self: Box<Self>);
@@ -91,14 +92,19 @@ pub fn parse_toplevel(mut args: VecDeque<String>) -> Box<dyn Command> {
             task: show_help,
         },
         ParamInfo::Subcommand {
-            name: "build",
-            desc: "compile a local mumrik program and all of its dependencies",
-            parse: build::BuildCommand::parse,
-        },
-        ParamInfo::Subcommand {
             name: "new",
             desc: "create new mumrik project with default config file",
             parse: new_::NewCommand::parse,
+        },
+        ParamInfo::Subcommand {
+            name: "build",
+            desc: "compile the local mumrik program and all of its dependencies",
+            parse: build::BuildCommand::parse,
+        },
+        ParamInfo::Subcommand {
+            name: "run",
+            desc: "compile and run the local mumrik program",
+            parse: run::RunCommand::parse,
         },
     ];
 

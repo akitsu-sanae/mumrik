@@ -21,7 +21,7 @@ impl BuildCommand {
             if arg.as_str() == "--help" || arg.as_str() == "-h" {
                 println!(
                     r#"mumrik-build : compile a local mumrik program and all of its dependencies
-USAGE: {} build [options...] [filename]
+USAGE: {} build [options...] <filename>
 
 options:
     --output, -o <output-filename>  write brinary code to <output-filename>, default: `a.out`
