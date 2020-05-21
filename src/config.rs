@@ -39,7 +39,7 @@ impl Config {
     }
 }
 
-fn config_path() -> Option<PathBuf> {
+pub fn config_path() -> Option<PathBuf> {
     let mut dir = std::env::current_dir().unwrap();
     while {
         let mut config_path = dir.clone();
@@ -56,6 +56,7 @@ fn config_path() -> Option<PathBuf> {
 pub struct BuildConfig {
     pub src: String,
     pub output: String,
+    pub dep: String,
 }
 
 impl BuildConfig {
@@ -63,6 +64,7 @@ impl BuildConfig {
         BuildConfig {
             src: "./main.mm".to_string(),
             output: "./a.out".to_string(),
+            dep: ".".to_string(),
         }
     }
 }

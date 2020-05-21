@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use util;
 
 mod build;
+mod install;
 mod new_;
 mod run;
 
@@ -105,6 +106,11 @@ pub fn parse_toplevel(mut args: VecDeque<String>) -> Box<dyn Command> {
             name: "run",
             desc: "compile and run the local mumrik program",
             parse: run::RunCommand::parse,
+        },
+        ParamInfo::Subcommand {
+            name: "install",
+            desc: "download git repository from github for the local mumrik project",
+            parse: install::InstallCommand::parse,
         },
     ];
 

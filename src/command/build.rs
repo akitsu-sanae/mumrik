@@ -12,15 +12,9 @@ pub struct BuildCommand {
     pub output: Option<String>,
 }
 
-impl BuildCommand {
-    pub fn parse(program_name: String, mut args: VecDeque<String>) -> Box<dyn Command> {
-        let mut src = None;
-        let mut output = None;
-
-        while let Some(arg) = args.pop_front() {
-            if arg.as_str() == "--help" || arg.as_str() == "-h" {
-                println!(
-                    r#"mumrik-build : compile a local mumrik program and all of its dependencies
+fn print_help(program_name: &str) {
+    println!(
+        r#"mumrik-build : compile a local mumrik program and all of its dependencies
 USAGE: {} build [options...] <filename>
 
 options:
@@ -28,9 +22,18 @@ options:
     --help, -h           print help information
 
 filename: input mumrik program filename"#,
-                    program_name
-                );
-                std::process::exit(0);
+        program_name
+    );
+    std::process::exit(0);
+}
+impl BuildCommand {
+    pub fn parse(program_name: String, mut args: VecDeque<String>) -> Box<dyn Command> {
+        let mut src = None;
+        let mut output = None;
+
+        while let Some(arg) = args.pop_front() {
+            if arg.as_str() == "--help" || arg.as_str() == "-h" {
+                print_help(&program_name);
             } else if arg.as_str() == "--output" || arg.as_str() == "-o" {
                 output = Some(args.pop_front().unwrap_or_else(|| {
                     panic!(

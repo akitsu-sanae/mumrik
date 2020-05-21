@@ -86,6 +86,7 @@ const BOILERPLACE_MUMRIK_CONF_TOML: &[u8] = br#"
 [build]
 src = "./src/main.mm"
 output = "./build/output"
+dep = "./dep/"
 "#;
 
 impl Command for NewCommand {
@@ -93,6 +94,7 @@ impl Command for NewCommand {
         create_dir(&format!("./{}", self.project_name), "project");
         create_dir(&format!("./{}/src", self.project_name), "source");
         create_dir(&format!("./{}/build", self.project_name), "build");
+        create_dir(&format!("./{}/dep", self.project_name), "build");
         create_file(
             &format!("./{}/src/main.mm", self.project_name),
             "main.mm",
