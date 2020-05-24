@@ -36,8 +36,13 @@ pub rule program() -> Program
         }
     }
 
-rule import_() -> Ident
-    = IMPORT() name:ident() SEMICOLON() { name }
+rule import_() -> Import
+    = IMPORT() dirs:(dir:ident() DOT() { dir })* name:ident() SEMICOLON() {
+        Import {
+            dirs: dirs,
+            module_name: name,
+        }
+    }
 
 rule toplevel_expr() -> Expr
     = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {

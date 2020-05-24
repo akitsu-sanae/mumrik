@@ -54,17 +54,17 @@ pub fn config_path() -> Option<PathBuf> {
 
 #[derive(Debug, Deserialize)]
 pub struct BuildConfig {
-    pub src: String,
-    pub output: String,
-    pub dep: String,
+    pub src: PathBuf,
+    pub output: PathBuf,
+    pub dep: PathBuf,
 }
 
 impl BuildConfig {
     fn default() -> BuildConfig {
         BuildConfig {
-            src: "./main.mm".to_string(),
-            output: "./a.out".to_string(),
-            dep: ".".to_string(),
+            src: PathBuf::from("./main.mm".to_string()),
+            output: PathBuf::from("./a.out".to_string()),
+            dep: PathBuf::from(".".to_string()),
         }
     }
 }

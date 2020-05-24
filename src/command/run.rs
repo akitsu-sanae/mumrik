@@ -1,11 +1,12 @@
 use command::{build::BuildCommand, Command};
 use config;
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use util;
 
 pub struct RunCommand {
-    pub src: Option<String>,
-    pub output: Option<String>,
+    pub src: Option<PathBuf>,
+    pub output: Option<PathBuf>,
 }
 
 impl RunCommand {
@@ -28,16 +29,16 @@ filename: input mumrik program filename"#,
                 );
                 std::process::exit(0);
             } else if arg.as_str() == "--output" || arg.as_str() == "-o" {
-                output = Some(args.pop_front().unwrap_or_else(|| {
+                output = Some(PathBuf::from(args.pop_front().unwrap_or_else(|| {
                     panic!(
                         "{}: filename is required after `--output` or -o`",
                         util::alert("error")
                     )
-                }));
+                })));
             } else if arg.as_str().starts_with("--output=") {
-                output = Some(arg[9..].to_string());
+                output = Some(PathBuf::from(arg[9..].to_string()));
             } else if arg.as_str().starts_with("-o=") {
-                output = Some(arg[3..].to_string());
+                output = Some(PathBuf::from(arg[3..].to_string()));
             } else if src.is_some() {
                 panic!(
                     "{}: too many command line argument `{}`",
@@ -45,7 +46,7 @@ filename: input mumrik program filename"#,
                     arg
                 );
             } else {
-                src = Some(arg);
+                src = Some(PathBuf::from(arg));
             }
         }
 

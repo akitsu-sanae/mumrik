@@ -1,5 +1,5 @@
 use ast::*;
-
+use std::path::Path;
 mod auxprocess;
 
 fn conv_toplevel_expr(e: Expr) -> nf::Nf {
@@ -178,7 +178,7 @@ fn exec_command(command_name: &str, args: Vec<&str>) {
     }
 }
 
-pub fn codegen(expr: Expr, filename: &str) {
+pub fn codegen(expr: Expr, filename: &Path) {
     let nf = conv_toplevel_expr(auxprocess::pre(expr));
 
     let mut ll_file = tempfile::Builder::new()
@@ -207,5 +207,5 @@ pub fn codegen(expr: Expr, filename: &str) {
         "llc",
         vec!["-filetype=obj", ll_filename.as_str(), "-o", obj_filename],
     );
-    exec_command("gcc", vec![obj_filename, "-o", filename]);
+    exec_command("gcc", vec![obj_filename, "-o", filename.to_str().unwrap()]);
 }

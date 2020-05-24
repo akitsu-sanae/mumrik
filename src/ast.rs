@@ -19,8 +19,14 @@ impl Position {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Import {
+    pub dirs: Vec<Ident>,
+    pub module_name: Ident,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
-    pub imports: Vec<Ident>,
+    pub imports: Vec<Import>,
     pub expr: Expr,
 }
 

@@ -4,12 +4,13 @@ use command::Command;
 use config;
 use parser;
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use typecheck;
 use util;
 
 pub struct BuildCommand {
-    pub src: Option<String>,
-    pub output: Option<String>,
+    pub src: Option<PathBuf>,
+    pub output: Option<PathBuf>,
 }
 
 fn print_help(program_name: &str) {
@@ -35,16 +36,16 @@ impl BuildCommand {
             if arg.as_str() == "--help" || arg.as_str() == "-h" {
                 print_help(&program_name);
             } else if arg.as_str() == "--output" || arg.as_str() == "-o" {
-                output = Some(args.pop_front().unwrap_or_else(|| {
+                output = Some(PathBuf::from(args.pop_front().unwrap_or_else(|| {
                     panic!(
                         "{}: filename is required after `--output` or -o`",
                         util::alert("error")
                     )
-                }));
+                })));
             } else if arg.as_str().starts_with("--output=") {
-                output = Some(arg[9..].to_string());
+                output = Some(PathBuf::from(arg[9..].to_string()));
             } else if arg.as_str().starts_with("-o=") {
-                output = Some(arg[3..].to_string());
+                output = Some(PathBuf::from(arg[3..].to_string()));
             } else if src.is_some() {
                 panic!(
                     "{}: too many command line argument `{}`",
@@ -52,7 +53,7 @@ impl BuildCommand {
                     arg
                 );
             } else {
-                src = Some(arg);
+                src = Some(PathBuf::from(arg));
             }
         }
 
@@ -75,17 +76,43 @@ impl Command for BuildCommand {
         } else {
             config::CONFIG.lock().unwrap().build.output.clone()
         };
-        let (expr, _) = read_file(&src);
+        let mut entry_modules = vec![];
+        if let Some(src_dir) = src.as_path().parent() {
+            entry_modules.push(src_dir.to_path_buf());
+        }
+        entry_modules.push(config::CONFIG.lock().unwrap().build.dep.clone());
+        let (expr, _) = read_file(&src, &entry_modules);
         codegen::codegen(expr, &output);
     }
 }
 
-fn read_file(filename: &str) -> (ast::Expr, ast::Type) {
+fn append_import_path(path: PathBuf, import: ast::Import) -> PathBuf {
+    let mut path = import.dirs.into_iter().fold(path, |mut acc, dir| {
+        acc.push(format!("{}", dir));
+        acc
+    });
+    path.push(format!("{}.mm", import.module_name));
+    path
+}
+
+fn imported_filepath(entry_modules: &Vec<PathBuf>, import: ast::Import) -> Option<PathBuf> {
+    for entry_module in entry_modules.iter() {
+        let module_file_path = append_import_path(entry_module.clone(), import.clone());
+        eprintln!("import: {}", module_file_path.to_str().unwrap());
+        if module_file_path.is_file() {
+            return Some(module_file_path);
+        }
+    }
+    eprintln!("unknown import: {:?}", import); // TODO
+    panic!();
+}
+
+fn read_file(input_path: &PathBuf, entry_modules: &Vec<PathBuf>) -> (ast::Expr, ast::Type) {
     use std::io::Read;
     let mut input_src = String::new();
-    let f = std::fs::File::open(filename).and_then(|mut f| f.read_to_string(&mut input_src));
+    let f = std::fs::File::open(input_path).and_then(|mut f| f.read_to_string(&mut input_src));
     if !f.is_ok() {
-        eprintln!("can not read file: {}", filename);
+        eprintln!("can not read file: {}", input_path.to_str().unwrap());
         std::process::exit(-1);
     }
 
@@ -111,30 +138,33 @@ fn read_file(filename: &str) -> (ast::Expr, ast::Type) {
         .imports
         .into_iter()
         .fold(program.expr, |acc, import| {
-            let filename = format!("{}.mm", import);
-            let (expr, _) = read_file(&filename);
-            match expr {
-                ast::Expr::Let(name, typ, box e, box ast::Expr::EmptyMark, pos) => {
-                    ast::Expr::Let(name, typ, box e, box acc, pos)
+            if let Some(file_pathbuf) = imported_filepath(entry_modules, import) {
+                let (expr, _) = read_file(&file_pathbuf, entry_modules);
+                match expr {
+                    ast::Expr::Let(name, typ, box e, box ast::Expr::EmptyMark, pos) => {
+                        ast::Expr::Let(name, typ, box e, box acc, pos)
+                    }
+                    ast::Expr::Func {
+                        name,
+                        param_name,
+                        param_type,
+                        ret_type,
+                        box body,
+                        left: box ast::Expr::EmptyMark,
+                        pos,
+                    } => ast::Expr::Func {
+                        name: name,
+                        param_name: param_name,
+                        param_type: param_type,
+                        ret_type: ret_type,
+                        body: box body,
+                        left: box acc,
+                        pos: pos,
+                    },
+                    _ => unreachable!(),
                 }
-                ast::Expr::Func {
-                    name,
-                    param_name,
-                    param_type,
-                    ret_type,
-                    box body,
-                    left: box ast::Expr::EmptyMark,
-                    pos,
-                } => ast::Expr::Func {
-                    name: name,
-                    param_name: param_name,
-                    param_type: param_type,
-                    ret_type: ret_type,
-                    body: box body,
-                    left: box acc,
-                    pos: pos,
-                },
-                _ => unreachable!(),
+            } else {
+                acc
             }
         });
 
