@@ -39,6 +39,9 @@ fn lift_impl(
                     unreachable!()
                 };
 
+            let mut func_names = func_names.clone();
+            func_names.push(func_name.clone());
+
             let mut appended_params = HashMap::new();
             appended_params.insert(func_name.clone(), (param_name.clone(), free_vars.clone()));
 
