@@ -2,6 +2,18 @@ use ast::{self, Expr::*, Literal::*, Position, Program, Type};
 use ident::Ident;
 use parser::*;
 
+macro_rules! hashmap(
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = ::std::collections::HashMap::new();
+            $(
+                m.insert($key, $value);
+            )+
+            m
+        }
+     };
+);
+
 #[test]
 fn primitive_literal() {
     assert_eq!(
@@ -175,10 +187,10 @@ fn record() {
         program("{ id=42, value=123 }"),
         Ok(Program {
             imports: vec![],
-            expr: Const(Record(vec![
-                (Ident::new("id"), Const(Number(42))),
-                (Ident::new("value"), Const(Number(123))),
-            ],))
+            expr: Const(Record(hashmap! {
+                Ident::new("id") => Const(Number(42)),
+                Ident::new("value") => Const(Number(123))
+            }))
         })
     );
 }
@@ -189,11 +201,11 @@ fn tuple() {
         program("(1, 2, 3)"),
         Ok(Program {
             imports: vec![],
-            expr: Const(Record(vec![
-                (Ident::new("0"), Const(Number(1))),
-                (Ident::new("1"), Const(Number(2))),
-                (Ident::new("2"), Const(Number(3))),
-            ]))
+            expr: Const(Record(hashmap! {
+                Ident::new("0") => Const(Number(1)),
+                Ident::new("1") => Const(Number(2)),
+                Ident::new("2") => Const(Number(3))
+            }))
         })
     );
 }
@@ -205,7 +217,7 @@ fn field_access() {
         Ok(Program {
             imports: vec![],
             expr: FieldAccess(
-                box Const(Record(vec![(Ident::new("id"), Const(Number(42)))],)),
+                box Const(Record(hashmap! {Ident::new("id") => Const(Number(42))})),
                 Type::Var(Ident::new("<fresh-expected>")),
                 Ident::new("id"),
                 Position { start: 0, end: 10 }

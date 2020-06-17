@@ -125,7 +125,7 @@ fn apply() {
                     body: box Expr::Var(Ident::new("x"), Type::Int, Position { start: 0, end: 0 }),
                     left: box Expr::Var(
                         func_name.clone(),
-                        Type::Var(Ident::new("d")),
+                        Type::Func(box Type::Int, box Type::Int),
                         Position { start: 0, end: 0 }
                     ),
                     pos: Position { start: 0, end: 0 }
@@ -174,8 +174,8 @@ fn binop_expr() {
                 ret_type: Type::Int,
                 body: box Expr::BinOp(
                     BinOp::Add,
-                    box x_var_before.clone(),
-                    box x_var_before.clone(),
+                    box x_var_after.clone(),
+                    box x_var_after.clone(),
                     Position { start: 0, end: 0 }
                 ),
                 left: box Expr::Var(
@@ -194,6 +194,10 @@ fn binop_expr() {
 fn if_expr() {
     let func_name1 = Ident::fresh();
     let func_name2 = Ident::fresh();
+    // func <func_name1> x:a1 -> b1 {
+    //   let <func_name2> = func y:a2 -> b2 => if x { y } else { 42 };
+    //   <func_name2>
+    // }
     assert_eq!(
         typecheck::check(Expr::Func {
             name: func_name1.clone(),
@@ -238,7 +242,7 @@ fn if_expr() {
                 name: func_name1.clone(),
                 param_name: Ident::new("x"),
                 param_type: Type::Bool,
-                ret_type: Type::Int,
+                ret_type: Type::Func(box Type::Int, box Type::Int),
                 body: box Expr::Func {
                     name: func_name2.clone(),
                     param_name: Ident::new("y"),
@@ -264,7 +268,7 @@ fn if_expr() {
                 ),
                 pos: Position { start: 0, end: 0 },
             },
-            Type::Func(box Type::Bool, box Type::Int)
+            Type::Func(box Type::Bool, box Type::Func(box Type::Int, box Type::Int))
         ))
     );
 }
