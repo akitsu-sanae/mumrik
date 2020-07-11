@@ -98,8 +98,8 @@ fn append_import_path(path: PathBuf, import: ast::Import) -> PathBuf {
 fn imported_filepath(entry_modules: &Vec<PathBuf>, import: ast::Import) -> Option<PathBuf> {
     for entry_module in entry_modules.iter() {
         let module_file_path = append_import_path(entry_module.clone(), import.clone());
-        eprintln!("import: {}", module_file_path.to_str().unwrap());
         if module_file_path.is_file() {
+            eprintln!("import: {}", module_file_path.to_str().unwrap());
             return Some(module_file_path);
         }
     }
