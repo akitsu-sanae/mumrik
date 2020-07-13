@@ -18,6 +18,7 @@ impl<T: Clone + Debug> Env<T> {
     pub fn lookup(&self, name: &Ident) -> Option<T> {
         self.0
             .iter()
+            .rev()
             .find(|e| &e.0 == name)
             .map(|res| res.clone().1)
     }
