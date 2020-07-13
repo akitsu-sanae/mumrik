@@ -45,47 +45,9 @@ rule import_() -> Import
     }
 
 rule toplevel_expr() -> Expr
-    = start:position!() FUNC() name:ident() param_name:ident() COLON() param_type:type_() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+    = start:position!() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+        // e.g) func id x:Int { x } ..
         let ret_type = ret_type.unwrap_or_else(|| Type::Var(Ident::fresh()));
-        let func_name = Ident::fresh();
-        let func_type = Type::Func(box param_type.clone(), box ret_type.clone());
-        let pos = Position {start: start, end: end};
-        Expr::Let(
-            name,
-            func_type.clone(),
-            box Expr::Func {
-                name: func_name.clone(),
-                param_name: param_name,
-                param_type: param_type,
-                ret_type: ret_type,
-                body: box body,
-                left: box Expr::Var(func_name, func_type, pos),
-                pos
-            },
-            box left,
-            pos)
-    }
-    / start:position!() FUNC() name:ident() record_type:record_type() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
-        let ret_type = ret_type.unwrap_or_else(|| Type::Var(Ident::fresh()));
-        let func_name = Ident::fresh();
-        let func_type = Type::Func(box record_type.clone(), box ret_type.clone());
-        let pos = Position {start: start, end: end};
-        Expr::Let(
-            name,
-            func_type.clone(),
-            box Expr::Func {
-                name: func_name.clone(),
-                param_name: Ident::omitted_param_name(),
-                param_type: record_type,
-                ret_type: ret_type,
-                body: box body,
-                left: box Expr::Var(func_name, func_type, pos),
-                pos
-            },
-            box left,
-            pos)
-    }
-    / start:position!() REC() FUNC()  name:ident() param_name:ident() COLON() param_type:type_() COLON() ret_type:type_() LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
         Expr::Func {
             name: name,
             param_name: param_name,
@@ -96,7 +58,9 @@ rule toplevel_expr() -> Expr
             pos: Position {start: start, end: end}
         }
     }
-    / start:position!() REC() FUNC() name:ident() record_type:record_type() COLON() ret_type:type_() LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+    / start:position!() FUNC() name:ident() record_type:record_type() ret_type:(COLON() typ:type_() { typ })? LEFT_BRACE() body:expr() RIGHT_BRACE() end:position!() left:toplevel_expr() {
+        // e.g) func add {x:Int, y:Int} { x + y } ..
+        let ret_type = ret_type.unwrap_or_else(|| Type::Var(Ident::fresh()));
         Expr::Func {
             name: name,
             param_name: Ident::omitted_param_name(),
@@ -277,13 +241,12 @@ rule comment()
     / "/*" (!"*/" [_])* "*/"  // block comment
 
 rule IS_KEYWORD()
-    = TYPE() / ENUM() / MATCH() / LET() / REC() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN() / IMPORT()
+    = TYPE() / ENUM() / MATCH() / LET() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN() / IMPORT()
 
 rule TYPE() = "type" !ident() __
 rule ENUM() = "enum" !ident() __
 rule MATCH() = "match" !ident() __
 rule LET() = "let" !ident() __
-rule REC() = "rec" !ident() __
 rule FUNC() = "func" !ident() __
 rule IF() = "if" !ident() __
 rule ELSE() = "else" !ident() __

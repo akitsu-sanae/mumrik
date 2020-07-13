@@ -239,32 +239,22 @@ f 13
         ),
         Ok(Program {
             imports: vec![],
-            expr: Let(
-                Ident::new("f"),
-                Type::Func(box Type::Int, box Type::Int),
-                box Func {
-                    name: Ident::new("<fresh-expected>"),
-                    param_name: Ident::new("a"),
-                    param_type: Type::Int,
-                    ret_type: Type::Int,
-                    body: box BinOp(
-                        ast::BinOp::Add,
-                        box Var(
-                            Ident::new("a"),
-                            Type::Var(Ident::new("<fresh-expected>")),
-                            Position { start: 25, end: 27 }
-                        ),
-                        box Const(Number(12)),
-                        Position { start: 27, end: 29 }
+            expr: Func {
+                name: Ident::new("f"),
+                param_name: Ident::new("a"),
+                param_type: Type::Int,
+                ret_type: Type::Int,
+                body: box BinOp(
+                    ast::BinOp::Add,
+                    box Var(
+                        Ident::new("a"),
+                        Type::Var(Ident::new("<fresh-expected>")),
+                        Position { start: 25, end: 27 }
                     ),
-                    left: box Var(
-                        Ident::new("<fresh-expected>"),
-                        Type::Func(box Type::Int, box Type::Int),
-                        Position { start: 1, end: 34 }
-                    ),
-                    pos: Position { start: 1, end: 34 },
-                },
-                box Apply(
+                    box Const(Number(12)),
+                    Position { start: 27, end: 29 }
+                ),
+                left: box Apply(
                     box Var(
                         Ident::new("f"),
                         Type::Var(Ident::new("<fresh-expected>")),
@@ -273,8 +263,8 @@ f 13
                     box Const(Number(13)),
                     Position { start: 34, end: 39 }
                 ),
-                Position { start: 1, end: 34 }
-            )
+                pos: Position { start: 1, end: 34 }
+            },
         })
     );
 }
@@ -284,7 +274,7 @@ fn rec_func() {
     assert_eq!(
         program(
             r#"
-rec func fib x:Int :Int {
+func fib x:Int :Int {
     if x < 2 {
         1
     } else {
@@ -307,10 +297,10 @@ fib 3
                         box Var(
                             Ident::new("x"),
                             Type::Var(Ident::new("<fresh-expected>")),
-                            Position { start: 34, end: 36 }
+                            Position { start: 30, end: 32 }
                         ),
                         box Const(Number(2)),
-                        Position { start: 36, end: 38 }
+                        Position { start: 32, end: 34 }
                     ),
                     box Const(Number(1)),
                     box BinOp(
@@ -319,61 +309,58 @@ fib 3
                             box Var(
                                 Ident::new("fib"),
                                 Type::Var(Ident::new("<fresh-expected>")),
-                                Position { start: 73, end: 77 }
+                                Position { start: 69, end: 73 }
                             ),
                             box BinOp(
                                 ast::BinOp::Sub,
                                 box Var(
                                     Ident::new("x"),
                                     Type::Var(Ident::new("<fresh-expected>")),
-                                    Position { start: 78, end: 79 }
+                                    Position { start: 74, end: 75 }
                                 ),
                                 box Const(Number(1)),
-                                Position { start: 79, end: 80 }
+                                Position { start: 75, end: 76 }
                             ),
-                            Position { start: 73, end: 83 }
+                            Position { start: 69, end: 79 }
                         ),
                         box Apply(
                             box Var(
                                 Ident::new("fib"),
                                 Type::Var(Ident::new("<fresh-expected>")),
-                                Position { start: 85, end: 89 }
+                                Position { start: 81, end: 85 }
                             ),
                             box BinOp(
                                 ast::BinOp::Sub,
                                 box Var(
                                     Ident::new("x"),
                                     Type::Var(Ident::new("<fresh-expected>")),
-                                    Position { start: 90, end: 91 }
+                                    Position { start: 86, end: 87 }
                                 ),
                                 box Const(Number(2)),
-                                Position { start: 91, end: 92 }
+                                Position { start: 87, end: 88 }
                             ),
-                            Position { start: 85, end: 99 }
+                            Position { start: 81, end: 95 }
                         ),
-                        Position { start: 83, end: 85 }
+                        Position { start: 79, end: 81 }
                     ),
-                    Position {
-                        start: 31,
-                        end: 101
-                    }
+                    Position { start: 27, end: 97 }
                 ),
                 left: box Apply(
                     box Var(
                         Ident::new("fib"),
                         Type::Var(Ident::new("<fresh-expected>")),
                         Position {
-                            start: 103,
-                            end: 107
+                            start: 99,
+                            end: 103
                         }
                     ),
                     box Const(Number(3)),
                     Position {
-                        start: 103,
-                        end: 109
+                        start: 99,
+                        end: 105
                     }
                 ),
-                pos: Position { start: 1, end: 103 }
+                pos: Position { start: 1, end: 99 }
             }
         })
     );
