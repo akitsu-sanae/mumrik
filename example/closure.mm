@@ -1,4 +1,4 @@
-rec func hoge {x: Int, y: Int}: Int {
+func hoge {x: Int, y: Int}: Int {
     (func x_: Int => x_ + y)(x)
 }
 

@@ -1,4 +1,4 @@
-rec func add {x: Int, y: Int}: Int {
+func add {x: Int, y: Int}: Int {
     x + y
 }
 

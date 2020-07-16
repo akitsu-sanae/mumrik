@@ -4,115 +4,55 @@ use ident::Ident;
 use std::collections::VecDeque;
 
 mod subst;
-use self::subst::Subst;
+mod unify;
+use self::unify::Constraint;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
-    RecursiveOccurrence {
+    RecOccur {
         pos: Position,
         var: Ident,
         typ: Type,
     },
-    UnmatchType {
+    Unify {
         pos: Position,
-        expected: Type,
-        actual: Type,
+        typ1: Type,
+        typ2: Type,
     },
-    UnboundVariable {
+    UnboundVar {
         pos: Position,
         name: Ident,
     },
-}
-
-fn unify(queue: Vec<(Type, Type)>, pos: &Position) -> Result<Subst, Error> {
-    let mut queue = VecDeque::from(queue);
-    let mut subst = Subst::new();
-    loop {
-        if let Some((typ1, typ2)) = queue.pop_front() {
-            match (typ1, typ2) {
-                (typ1, typ2) if typ1 == typ2 => (),
-                (Type::Func(box typ11, box typ12), Type::Func(box typ21, box typ22)) => {
-                    queue.push_back((typ11, typ21));
-                    queue.push_back((typ12, typ22));
-                }
-                (Type::Record(fields1), Type::Record(fields2)) => {
-                    if fields1.len() != fields2.len() {
-                        return Err(Error::UnmatchType {
-                            pos: pos.clone(),
-                            expected: Type::Record(fields1),
-                            actual: Type::Record(fields2),
-                        });
-                    }
-                    for (ref field1, ref field2) in fields1.iter().zip(fields2.iter()) {
-                        if field1.0 != field2.0 {
-                            return Err(Error::UnmatchType {
-                                pos: pos.clone(),
-                                expected: field1.1.clone(),
-                                actual: field2.1.clone(),
-                            });
-                        }
-                    }
-                    for (field1, field2) in fields1.into_iter().zip(fields2.into_iter()) {
-                        queue.push_back((field1.1, field2.1));
-                    }
-                }
-                (Type::Var(name), typ) | (typ, Type::Var(name)) => {
-                    queue = queue
-                        .into_iter()
-                        .map(|(typ1, typ2)| {
-                            (typ1.subst_type(&name, &typ), typ2.subst_type(&name, &typ))
-                        })
-                        .collect();
-                    subst = Subst(
-                        subst
-                            .0
-                            .into_iter()
-                            .map(|(name_, typ_): (Ident, Type)| {
-                                (name_, typ_.subst_type(&name, &typ))
-                            })
-                            .collect(),
-                    );
-                    if typ.is_occurs(&name) {
-                        return Err(Error::RecursiveOccurrence {
-                            pos: pos.clone(),
-                            var: name,
-                            typ: typ,
-                        });
-                    } else if !subst.0.iter().any(|(name_, _)| name_ == &name) {
-                        subst.0.insert(name, typ);
-                    }
-                }
-                (typ1, typ2) => {
-                    return Err(Error::UnmatchType {
-                        pos: pos.clone(),
-                        expected: typ1,
-                        actual: typ2,
-                    })
-                }
-            }
-        } else {
-            break;
-        }
-    }
-    Ok(subst)
+    Other {
+        pos: Position,
+        message: String,
+    },
 }
 
 pub fn check(e: Expr) -> Result<(Expr, Type), Error> {
-    let (typ, subst) = check_expr(&e, &Env::new())?;
-    let e = subst.apply_expr(e);
-    Ok((e, typ))
+    let (constraints, typ) = gather_constraint_from_expr(&e, &Env::new())?;
+    let subst = unify::solve(constraints)?;
+    Ok((subst.apply_expr(e), subst.apply_type(typ)))
 }
 
-fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
+fn gather_constraint_from_expr(
+    e: &Expr,
+    env: &Env<Type>,
+) -> Result<(VecDeque<Constraint>, Type), Error> {
     match e {
-        Expr::Const(ref lit) => Ok(check_literal(lit, env)?),
+        Expr::Const(ref lit) => gather_constraint_from_lit(lit, env),
         Expr::Var(ref name, ref typ, ref pos) => {
             if let Some(typ_) = env.lookup(name) {
-                let subst = unify(vec![(typ_.clone(), typ.clone())], pos)?;
-                let typ_ = subst.apply_type(typ_);
-                Ok((typ_, subst))
+                Ok((
+                    VecDeque::from(vec![Constraint::Equation(
+                        typ.clone(),
+                        typ_.clone(),
+                        pos.clone(),
+                    )]),
+                    typ_,
+                ))
             } else {
-                Err(Error::UnboundVariable {
+                Err(Error::UnboundVar {
                     pos: pos.clone(),
                     name: name.clone(),
                 })
@@ -131,7 +71,7 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
                 name.clone(),
                 Type::Func(box param_type.clone(), box ret_type.clone()),
             );
-            let (left_ty, subst1) = check_expr(left, &env)?;
+            let (mut left_constraints, left_typ) = gather_constraint_from_expr(left, &env)?;
             let env = if param_name.is_omitted_param_name() {
                 if let Type::Record(fields) = param_type {
                     fields
@@ -143,107 +83,120 @@ fn check_expr(e: &Expr, env: &Env<Type>) -> Result<(Type, Subst), Error> {
             } else {
                 env.add(param_name.clone(), param_type.clone())
             };
-            let (body_ty, subst2) = check_expr(body, &env)?;
-            let subst3 = unify(vec![(ret_type.clone(), body_ty)], pos)?;
-            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
-            let left_ty = subst.apply_type(left_ty);
-            Ok((left_ty, subst))
+            let mut constraints = VecDeque::new();
+            let (mut body_constraints, body_typ) = gather_constraint_from_expr(body, &env)?;
+            constraints.append(&mut body_constraints);
+            constraints.push_back(Constraint::Equation(
+                ret_type.clone(),
+                body_typ,
+                pos.clone(),
+            ));
+            constraints.append(&mut left_constraints);
+            Ok((constraints, left_typ))
         }
         Expr::Apply(box ref e1, box ref e2, ref pos) => {
-            let (ty1, subst1) = check_expr(e1, env)?;
-            let (ty2, subst2) = check_expr(e2, env)?;
+            let mut constraints = VecDeque::new();
+            let (mut constraints1, typ1) = gather_constraint_from_expr(e1, env)?;
+            constraints.append(&mut constraints1);
+            let (mut constraints2, typ2) = gather_constraint_from_expr(e2, env)?;
+            constraints.append(&mut constraints2);
             let ret_type = Type::Var(Ident::fresh());
-            let subst3 = unify(vec![(ty1, Type::Func(box ty2, box ret_type.clone()))], pos)?;
-            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
-            let ret_type = subst.apply_type(ret_type);
-            Ok((ret_type, subst))
+            constraints.push_back(Constraint::Equation(
+                typ1,
+                Type::Func(box typ2, box ret_type.clone()),
+                pos.clone(),
+            ));
+            Ok((constraints, ret_type))
         }
         Expr::Let(ref name, ref typ, box ref e1, box ref e2, ref pos) => {
-            let (ty1, subst1) = check_expr(e1, env)?;
-            let env = env.add(name.clone(), ty1.clone());
-            let (ty2, subst2) = check_expr(e2, &env)?;
-            let subst3 = unify(vec![(typ.clone(), ty1)], pos)?;
-            let subst = Subst::compose(subst1, Subst::compose(subst2, subst3));
-            let ty2 = subst.apply_type(ty2);
-            Ok((ty2, subst))
+            let mut constraints = VecDeque::new();
+
+            let (mut constraints1, typ1) = gather_constraint_from_expr(e1, env)?;
+            constraints.append(&mut constraints1);
+            constraints.push_back(Constraint::Equation(typ.clone(), typ1.clone(), pos.clone()));
+
+            let env = env.add(name.clone(), typ1);
+
+            let (mut constraints2, typ2) = gather_constraint_from_expr(e2, &env)?;
+            constraints.append(&mut constraints2);
+
+            Ok((constraints, typ2))
         }
         Expr::LetType(ref name, ref typ, box ref e) => {
             let env = env.add(name.clone(), typ.clone());
-            check_expr(e, &env)
+            gather_constraint_from_expr(e, &env)
         }
         Expr::If(box ref cond, box ref e1, box ref e2, ref pos) => {
-            let (cond_ty, subst1) = check_expr(cond, env)?;
-            let (ty1, subst2) = check_expr(e1, env)?;
-            let (ty2, subst3) = check_expr(e2, env)?;
-            let subst_if = unify(vec![(cond_ty, Type::Bool), (ty1.clone(), ty2)], pos)?;
-            let subst = Subst::compose(
-                subst1,
-                Subst::compose(subst2, Subst::compose(subst3, subst_if)),
-            );
-            let ty = subst.apply_type(ty1);
-            Ok((ty, subst))
+            let mut constraints = VecDeque::new();
+
+            let (mut cond_constraints, cond_typ) = gather_constraint_from_expr(cond, env)?;
+            let (mut constraints1, typ1) = gather_constraint_from_expr(e1, env)?;
+            let (mut constraints2, typ2) = gather_constraint_from_expr(e2, env)?;
+
+            constraints.append(&mut cond_constraints);
+            constraints.append(&mut constraints1);
+            constraints.append(&mut constraints2);
+            constraints.push_back(Constraint::Equation(cond_typ, Type::Bool, pos.clone()));
+            constraints.push_back(Constraint::Equation(typ1.clone(), typ2, pos.clone()));
+            Ok((constraints, typ1))
         }
         Expr::BinOp(ref op, box ref e1, box ref e2, ref pos) => {
-            let (ty1, subst1) = check_expr(e1, env)?;
-            let (ty2, subst2) = check_expr(e2, env)?;
-            let subst_eq = unify(vec![(ty1.clone(), ty2)], pos)?;
-            let subst = Subst::compose(subst_eq, Subst::compose(subst1, subst2));
+            let mut constraints = VecDeque::new();
+            let (mut constraints1, typ1) = gather_constraint_from_expr(e1, env)?;
+            let (mut constraints2, typ2) = gather_constraint_from_expr(e2, env)?;
+            constraints.append(&mut constraints1);
+            constraints.append(&mut constraints2);
+            constraints.push_back(Constraint::Equation(typ1.clone(), typ2, pos.clone()));
+
             match op {
                 BinOp::Add | BinOp::Sub | BinOp::Mult | BinOp::Div => {
-                    let subst_ = unify(vec![(ty1, Type::Int)], pos)?;
-                    let subst = Subst::compose(subst, subst_);
-                    Ok((Type::Int, subst))
+                    constraints.push_back(Constraint::Equation(typ1, Type::Int, pos.clone()));
+                    Ok((constraints, Type::Int))
                 }
-                BinOp::Eq | BinOp::Neq | BinOp::Lt | BinOp::Gt => Ok((Type::Bool, subst)),
+                BinOp::Eq | BinOp::Neq | BinOp::Lt | BinOp::Gt => Ok((constraints, Type::Bool)),
             }
         }
         Expr::FieldAccess(box ref e, ref typ, ref label, ref pos) => {
-            let (typ_, subst) = check_expr(e, env)?;
-            let subst_eq = unify(vec![(typ_.clone(), typ.clone())], pos)?;
-            let subst = Subst::compose(subst, subst_eq);
-            if let Type::Record(fields) = subst.apply_type(typ_) {
-                Ok((
-                    fields
-                        .into_iter()
-                        .find(|(ref label_, _)| label == label_)
-                        .unwrap()
-                        .1,
-                    subst,
-                ))
-            } else {
-                todo!()
-            }
+            let (mut constraints, typ_) = gather_constraint_from_expr(e, env)?;
+            constraints.push_back(Constraint::Equation(typ.clone(), typ_.clone(), pos.clone()));
+            let elem_type = Type::Var(Ident::fresh());
+            constraints.push_back(Constraint::RecordAt(
+                typ_,
+                label.clone(),
+                elem_type.clone(),
+                pos.clone(),
+            ));
+
+            Ok((constraints, elem_type))
         }
         Expr::Println(box ref e) => {
-            let (_, subst) = check_expr(e, env)?;
-            Ok((Type::Unit, subst))
+            let (constraints, _) = gather_constraint_from_expr(e, env)?;
+            Ok((constraints, Type::Unit))
         }
-        Expr::EmptyMark => Ok((Type::EmptyMark, Subst::new())),
+        Expr::EmptyMark => Ok((VecDeque::new(), Type::EmptyMark)),
     }
 }
 
-fn check_literal(lit: &Literal, env: &Env<Type>) -> Result<(Type, Subst), Error> {
+fn gather_constraint_from_lit(
+    lit: &Literal,
+    env: &Env<Type>,
+) -> Result<(VecDeque<Constraint>, Type), Error> {
     match lit {
-        Literal::Number(_) => Ok((Type::Int, Subst::new())),
-        Literal::Bool(_) => Ok((Type::Bool, Subst::new())),
-        Literal::Char(_) => Ok((Type::Char, Subst::new())),
-        Literal::Unit => Ok((Type::Unit, Subst::new())),
+        Literal::Number(_) => Ok((VecDeque::new(), Type::Int)),
+        Literal::Bool(_) => Ok((VecDeque::new(), Type::Bool)),
+        Literal::Char(_) => Ok((VecDeque::new(), Type::Char)),
+        Literal::Unit => Ok((VecDeque::new(), Type::Unit)),
         Literal::Record(ref fields) => {
-            let mut substs = vec![];
+            let mut constraints = VecDeque::new();
             let fields: Result<_, _> = fields
                 .iter()
                 .map(|(label, e)| {
-                    let (ty, subst) = check_expr(e, env)?;
-                    substs.push(subst);
-                    Ok((label.clone(), ty))
+                    let (mut constraints_, typ) = gather_constraint_from_expr(e, env)?;
+                    constraints.append(&mut constraints_);
+                    Ok((label.clone(), typ))
                 })
                 .collect();
-            Ok((
-                Type::Record(fields?),
-                substs
-                    .into_iter()
-                    .fold(Subst::new(), |acc, subst| Subst::compose(acc, subst)),
-            ))
+            Ok((constraints, Type::Record(fields?)))
         }
     }
 }

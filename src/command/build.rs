@@ -171,7 +171,7 @@ fn read_file(input_path: &PathBuf, entry_modules: &Vec<PathBuf>) -> (ast::Expr, 
     match typecheck::check(expr) {
         Ok((expr, typ)) => (expr, typ),
         Err(err) => match err {
-            typecheck::Error::RecursiveOccurrence { pos, var, typ } => {
+            typecheck::Error::RecOccur { pos, var, typ } => {
                 let start = util::pos_to_location(&input_src, pos.start);
                 let end = util::pos_to_location(&input_src, pos.end);
                 eprintln!(
@@ -187,11 +187,7 @@ fn read_file(input_path: &PathBuf, entry_modules: &Vec<PathBuf>) -> (ast::Expr, 
                 eprintln!("type variable {} occurs recursively in {}", var, typ);
                 std::process::exit(-1)
             }
-            typecheck::Error::UnmatchType {
-                pos,
-                expected,
-                actual,
-            } => {
+            typecheck::Error::Unify { pos, typ1, typ2 } => {
                 let start = util::pos_to_location(&input_src, pos.start);
                 let end = util::pos_to_location(&input_src, pos.end);
                 eprintln!(
@@ -204,13 +200,10 @@ fn read_file(input_path: &PathBuf, entry_modules: &Vec<PathBuf>) -> (ast::Expr, 
                     eprintln!("{}", lines[line_i]);
                 }
                 eprintln!("```");
-                eprintln!(
-                    "expected type is {}, but actual type is {}",
-                    expected, actual
-                );
+                eprintln!("unification failed with `{}` and `{}`", typ1, typ2);
                 std::process::exit(-1)
             }
-            typecheck::Error::UnboundVariable { pos, name } => {
+            typecheck::Error::UnboundVar { pos, name } => {
                 let (line, column_start) = util::pos_to_location(&input_src, pos.start);
                 let (_, column_end) = util::pos_to_location(&input_src, pos.end);
                 eprintln!(
@@ -224,6 +217,22 @@ fn read_file(input_path: &PathBuf, entry_modules: &Vec<PathBuf>) -> (ast::Expr, 
                     " ".repeat(column_start - 1),
                     "^".repeat(column_end - column_start)
                 );
+                std::process::exit(-1)
+            }
+            typecheck::Error::Other { pos, message } => {
+                let start = util::pos_to_location(&input_src, pos.start);
+                let end = util::pos_to_location(&input_src, pos.end);
+                eprintln!(
+                    "\u{001B}[31m[type error]\u{001B}[39m at ({}, {})-({}, {})",
+                    start.0, start.1, end.0, end.1
+                );
+                let lines: Vec<_> = input_src.split('\n').collect();
+                eprintln!("```");
+                for line_i in start.0..end.0 {
+                    eprintln!("{}", lines[line_i]);
+                }
+                eprintln!("```");
+                eprintln!("{}", message);
                 std::process::exit(-1)
             }
         },
