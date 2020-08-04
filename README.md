@@ -15,7 +15,7 @@ Mumrik will have the following features (not implemented yet, WIP)
 8th Fibonacci number
 ```
 $ cat fib.mm
-rec func fib x: Int :Int {
+func fib x: Int :Int {
     if x < 2 { 1 }
     else { fib (x-1) + fib (x-2) }
 }
