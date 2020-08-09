@@ -70,7 +70,13 @@ impl Expr {
                 vars.extend(e2.free_term_vars());
                 vars
             }
-            Expr::FieldAccess(box ref e, _, _, _) => e.free_term_vars(),
+            Expr::RecordGet(box ref e, _, _, _) => e.free_term_vars(),
+            Expr::RecordSet(box ref e1, _, _, box ref e2, _) => {
+                let mut vars = HashMap::new();
+                vars.extend(e1.free_term_vars());
+                vars.extend(e2.free_term_vars());
+                vars
+            }
             Expr::Println(box ref e) => e.free_term_vars(),
             Expr::EmptyMark => HashMap::new(),
         }

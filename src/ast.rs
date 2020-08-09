@@ -48,7 +48,10 @@ pub enum Expr {
     LetType(Ident, Type, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
-    FieldAccess(Box<Expr>, Type, Ident, Position),
+    RecordGet(Box<Expr>, Type, Ident, Position),
+    RecordSet(Box<Expr>, Type, Ident, Box<Expr>, Position),
+    // ArrayGet(Box<Expr>, Box<Expr>, Position),
+    // ArraySet(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     Println(Box<Expr>),
     EmptyMark,
 }
@@ -60,6 +63,7 @@ pub enum Literal {
     Char(char),
     Unit,
     Record(HashMap<Ident, Expr>),
+    // Array(Vec<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

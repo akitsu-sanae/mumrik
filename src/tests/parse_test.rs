@@ -211,16 +211,36 @@ fn tuple() {
 }
 
 #[test]
-fn field_access() {
+fn record_get() {
     assert_eq!(
         program("{id=42}.id"),
         Ok(Program {
             imports: vec![],
-            expr: FieldAccess(
+            expr: RecordGet(
                 box Const(Record(hashmap! {Ident::new("id") => Const(Number(42))})),
                 Type::Var(Ident::new("<fresh-expected>")),
                 Ident::new("id"),
                 Position { start: 0, end: 10 }
+            )
+        })
+    );
+}
+
+#[test]
+fn record_set() {
+    assert_eq!(
+        program("{ {hoge=12, fuga=32} with hoge = 42 }"),
+        Ok(Program {
+            imports: vec![],
+            expr: RecordSet(
+                box Const(Record(hashmap! {
+                    Ident::new("hoge") => Const(Number(12)),
+                    Ident::new("fuga") => Const(Number(32))
+                })),
+                Type::Var(Ident::new("<fresh-expected>")),
+                Ident::new("hoge"),
+                box Const(Number(42)),
+                Position { start: 0, end: 37 }
             )
         })
     );

@@ -150,14 +150,27 @@ fn lift_impl(
                 appended_params,
             )
         }
-        Expr::FieldAccess(box e, typ, label, pos) => {
+        Expr::RecordGet(box e, typ, label, pos) => {
             let (f, e, appended_params) = lift_impl(e, func_names);
             (
                 box move |e: Expr| f(e),
-                Expr::FieldAccess(box e, typ, label, pos),
+                Expr::RecordGet(box e, typ, label, pos),
                 appended_params,
             )
         }
+        Expr::RecordSet(box e1, typ, label, box e2, pos) => {
+            let (f1, e1, appended_params1) = lift_impl(e1, func_names);
+            let (f2, e2, appended_params2) = lift_impl(e2, func_names);
+            let mut appended_params = HashMap::new();
+            appended_params.extend(appended_params1);
+            appended_params.extend(appended_params2);
+            (
+                box move |e: Expr| f1(f2(e)),
+                Expr::RecordSet(box e1, typ, label, box e2, pos),
+                appended_params,
+            )
+        }
+
         Expr::Println(box e) => {
             let (f, e, appended_params) = lift_impl(e, func_names);
             (
@@ -262,12 +275,20 @@ fn fix_param_type_inner(
             box fix_param_type_inner(e2, func_types, appended_params),
             pos,
         ),
-        Expr::FieldAccess(box e, typ, label, pos) => Expr::FieldAccess(
+        Expr::RecordGet(box e, typ, label, pos) => Expr::RecordGet(
             box fix_param_type_inner(e, func_types, appended_params),
             typ,
             label,
             pos,
         ),
+        Expr::RecordSet(box e1, typ, label, box e2, pos) => Expr::RecordSet(
+            box fix_param_type_inner(e1, func_types, appended_params),
+            typ,
+            label,
+            box fix_param_type_inner(e2, func_types, appended_params),
+            pos,
+        ),
+
         Expr::Println(box e) => {
             Expr::Println(box fix_param_type_inner(e, func_types, appended_params))
         }

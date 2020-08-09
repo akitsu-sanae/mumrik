@@ -131,10 +131,17 @@ fn aux_expr<T>(
             box aux_expr(e2, name, v, ef, lf, tf),
             pos,
         ),
-        Expr::FieldAccess(box e, typ, label, pos) => Expr::FieldAccess(
+        Expr::RecordGet(box e, typ, label, pos) => Expr::RecordGet(
             box aux_expr(e, name, v, ef, lf, tf),
             aux_type(typ, name, v, ef, lf, tf),
             label,
+            pos,
+        ),
+        Expr::RecordSet(box e1, typ, label, box e2, pos) => Expr::RecordSet(
+            box aux_expr(e1, name, v, ef, lf, tf),
+            aux_type(typ, name, v, ef, lf, tf),
+            label,
+            box aux_expr(e2, name, v, ef, lf, tf),
             pos,
         ),
         Expr::Println(box e) => Expr::Println(box aux_expr(e, name, v, ef, lf, tf)),

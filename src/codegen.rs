@@ -79,7 +79,7 @@ fn conv_expr(e: Expr) -> nf::Expr {
         Expr::BinOp(op, box e1, box e2, _) => {
             nf::Expr::BinOp(conv_binop(op), box conv_expr(e1), box conv_expr(e2))
         }
-        Expr::FieldAccess(box e, typ, label, _) => {
+        Expr::RecordGet(box e, typ, label, _) => {
             if let Type::Record(fields) = typ {
                 let idx = fields
                     .iter()
@@ -94,6 +94,32 @@ fn conv_expr(e: Expr) -> nf::Expr {
             } else {
                 unreachable!()
             }
+        }
+        Expr::RecordSet(box e1, typ, label, box e2, _) => {
+            let fields = if let Type::Record(fields) = typ.clone() {
+                fields
+            } else {
+                unreachable!()
+            };
+            let idx = fields
+                .iter()
+                .position(|(label_, _)| &label == label_)
+                .unwrap();
+            let tmp_var = nf::ident::Ident::fresh_name();
+            nf::Expr::Let(
+                tmp_var.clone(),
+                conv_ty(typ),
+                box conv_expr(e1),
+                box nf::Expr::Let(
+                    nf::ident::Ident::fresh_name(),
+                    nf::Type::Pointer(box conv_ty(fields[&label].clone())),
+                    box nf::Expr::Assign(
+                        box nf::Expr::TupleAt(box nf::Expr::Var(tmp_var.clone()), idx),
+                        box conv_expr(e2),
+                    ),
+                    box nf::Expr::Load(box nf::Expr::Var(tmp_var)),
+                ),
+            )
         }
         Expr::Println(box e) => nf::Expr::PrintNum(box conv_expr(e)),
         Expr::EmptyMark => unreachable!(),

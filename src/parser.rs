@@ -126,18 +126,19 @@ rule binop_expr() -> Expr = precedence! {
 }
 
 rule apply_expr() -> Expr
-    = start:position!() e1:field_access_expr() e2:apply_expr() end:position!() {
+    = start:position!() e1:record_get_expr() e2:apply_expr() end:position!() {
         Expr::Apply(box e1, box e2, Position {start: start, end: end})
     }
-    / field_access_expr()
+    / record_get_expr()
 
-rule field_access_expr() -> Expr
+rule record_get_expr() -> Expr
     = start:position!() e:factor_expr() labels:(DOT() label:ident() end:position!() { (label, end) })* {
-        labels.into_iter().fold(e, |acc, (label, end)| Expr::FieldAccess(box acc, Type::Var(Ident::fresh()), label, Position {start: start, end: end}))
+        labels.into_iter().fold(e, |acc, (label, end)| Expr::RecordGet(box acc, Type::Var(Ident::fresh()), label, Position {start: start, end: end}))
     }
 
 rule factor_expr() -> Expr
     = func_expr()
+    / record_set_expr()
     / record_expr()
     / tuple_expr()
     / number_expr()
@@ -180,6 +181,11 @@ rule func_expr() -> Expr
         }
     }
 
+
+rule record_set_expr() -> Expr
+    = start:position!() LEFT_BRACE() e1:expr() WITH() label:ident() EQUAL() e2:expr() RIGHT_BRACE() end:position!() {
+        Expr::RecordSet(box e1, Type::Var(Ident::fresh()), label, box e2, Position {start: start, end: end})
+    }
 
 rule record_expr() -> Expr
     = LEFT_BRACE() arms:(label:ident() EQUAL() e:expr() COMMA()? { (label, e) })* RIGHT_BRACE() {
@@ -241,7 +247,7 @@ rule comment()
     / "/*" (!"*/" [_])* "*/"  // block comment
 
 rule IS_KEYWORD()
-    = TYPE() / ENUM() / MATCH() / LET() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN() / IMPORT()
+    = TYPE() / ENUM() / MATCH() / LET() / FUNC() / IF() / ELSE() / INT() / BOOL() / TRUE() / FALSE() / UNIT_V() / PRINTLN() / IMPORT() / WITH()
 
 rule TYPE() = "type" !ident() __
 rule ENUM() = "enum" !ident() __
@@ -259,6 +265,7 @@ rule FALSE() = "false" !ident() __
 rule UNIT_V() = "unit" !ident() __
 rule PRINTLN() = "println" !ident() __
 rule IMPORT() = "import" !ident() __
+rule WITH() = "with" !ident() __
 
 rule WHITE_SPACE() = [' '|'\t'|'\r'|'\n']
 rule EQUAL() = "=" __

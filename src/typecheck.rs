@@ -156,7 +156,7 @@ fn gather_constraint_from_expr(
                 BinOp::Eq | BinOp::Neq | BinOp::Lt | BinOp::Gt => Ok((constraints, Type::Bool)),
             }
         }
-        Expr::FieldAccess(box ref e, ref typ, ref label, ref pos) => {
+        Expr::RecordGet(box ref e, ref typ, ref label, ref pos) => {
             let (mut constraints, typ_) = gather_constraint_from_expr(e, env)?;
             constraints.push_back(Constraint::Equation(typ.clone(), typ_.clone(), pos.clone()));
             let elem_type = Type::Var(Ident::fresh());
@@ -168,6 +168,21 @@ fn gather_constraint_from_expr(
             ));
 
             Ok((constraints, elem_type))
+        }
+        Expr::RecordSet(box ref e1, ref typ, ref label, box ref e2, ref pos) => {
+            let mut constraints = VecDeque::new();
+            let (mut constraints1, typ_) = gather_constraint_from_expr(e1, env)?;
+            constraints.append(&mut constraints1);
+            constraints.push_back(Constraint::Equation(typ.clone(), typ_.clone(), pos.clone()));
+            let (mut constraints2, elem_type) = gather_constraint_from_expr(e2, env)?;
+            constraints.append(&mut constraints2);
+            constraints.push_back(Constraint::RecordAt(
+                typ_.clone(),
+                label.clone(),
+                elem_type.clone(),
+                pos.clone(),
+            ));
+            Ok((constraints, typ_))
         }
         Expr::Println(box ref e) => {
             let (constraints, _) = gather_constraint_from_expr(e, env)?;
