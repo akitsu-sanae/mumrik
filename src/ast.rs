@@ -49,9 +49,8 @@ pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>, Position),
     BinOp(BinOp, Box<Expr>, Box<Expr>, Position),
     RecordGet(Box<Expr>, Type, Ident, Position),
-    RecordSet(Box<Expr>, Type, Ident, Box<Expr>, Position),
-    // ArrayGet(Box<Expr>, Box<Expr>, Position),
-    // ArraySet(Box<Expr>, Box<Expr>, Box<Expr>, Position),
+    ArrayGet(Box<Expr>, Box<Expr>, Position),
+    Assign(Box<Expr>, Box<Expr>, Position),
     Println(Box<Expr>),
     EmptyMark,
 }
@@ -63,7 +62,7 @@ pub enum Literal {
     Char(char),
     Unit,
     Record(HashMap<Ident, Expr>),
-    // Array(Vec<Expr>),
+    Array(Vec<Expr>, Type),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,6 +85,7 @@ pub enum Type {
     Unit,
     Func(Box<Type>, Box<Type>),
     Record(HashMap<Ident, Type>),
+    Array(Box<Type>, usize),
     Var(Ident),
     EmptyMark,
 }

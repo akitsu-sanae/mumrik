@@ -169,20 +169,29 @@ fn gather_constraint_from_expr(
 
             Ok((constraints, elem_type))
         }
-        Expr::RecordSet(box ref e1, ref typ, ref label, box ref e2, ref pos) => {
+        Expr::ArrayGet(box ref e1, box ref e2, ref pos) => {
             let mut constraints = VecDeque::new();
-            let (mut constraints1, typ_) = gather_constraint_from_expr(e1, env)?;
+            let (mut constraints1, typ1) = gather_constraint_from_expr(e1, env)?;
             constraints.append(&mut constraints1);
-            constraints.push_back(Constraint::Equation(typ.clone(), typ_.clone(), pos.clone()));
-            let (mut constraints2, elem_type) = gather_constraint_from_expr(e2, env)?;
-            constraints.append(&mut constraints2);
-            constraints.push_back(Constraint::RecordAt(
-                typ_.clone(),
-                label.clone(),
-                elem_type.clone(),
+            let elem_typ = Type::Var(Ident::fresh());
+            constraints.push_back(Constraint::Array(
+                typ1.clone(),
+                elem_typ.clone(),
                 pos.clone(),
             ));
-            Ok((constraints, typ_))
+            let (mut constraints2, typ2) = gather_constraint_from_expr(e2, env)?;
+            constraints.append(&mut constraints2);
+            constraints.push_back(Constraint::Equation(typ2.clone(), Type::Int, pos.clone()));
+            Ok((constraints, elem_typ))
+        }
+        Expr::Assign(box ref e1, box ref e2, ref pos) => {
+            let mut constraints = VecDeque::new();
+            let (mut constraints1, typ1) = gather_constraint_from_expr(e1, env)?;
+            constraints.append(&mut constraints1);
+            let (mut constraints2, typ2) = gather_constraint_from_expr(e2, env)?;
+            constraints.append(&mut constraints2);
+            constraints.push_back(Constraint::Equation(typ1.clone(), typ2, pos.clone()));
+            Ok((constraints, typ1))
         }
         Expr::Println(box ref e) => {
             let (constraints, _) = gather_constraint_from_expr(e, env)?;
@@ -212,6 +221,19 @@ fn gather_constraint_from_lit(
                 })
                 .collect();
             Ok((constraints, Type::Record(fields?)))
+        }
+        Literal::Array(ref elems, ref elem_typ) => {
+            let mut constraints = VecDeque::new();
+            for e in elems {
+                let (mut constraints_, typ) = gather_constraint_from_expr(e, env)?;
+                constraints.append(&mut constraints_);
+                constraints.push_back(Constraint::Equation(
+                    elem_typ.clone(),
+                    typ,
+                    Position { start: 0, end: 0 },
+                )); // TODO
+            }
+            Ok((constraints, Type::Array(box elem_typ.clone(), elems.len())))
         }
     }
 }

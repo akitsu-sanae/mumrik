@@ -95,31 +95,19 @@ fn conv_expr(e: Expr) -> nf::Expr {
                 unreachable!()
             }
         }
-        Expr::RecordSet(box e1, typ, label, box e2, _) => {
-            let fields = if let Type::Record(fields) = typ.clone() {
-                fields
+        Expr::ArrayGet(box e1, box e2, _) => {
+            if let nf::Expr::Load(box body) = conv_expr(e1) {
+                nf::Expr::Load(box nf::Expr::ArrayAt(box body, box conv_expr(e2)))
             } else {
                 unreachable!()
-            };
-            let idx = fields
-                .iter()
-                .position(|(label_, _)| &label == label_)
-                .unwrap();
-            let tmp_var = nf::ident::Ident::fresh_name();
-            nf::Expr::Let(
-                tmp_var.clone(),
-                conv_ty(typ),
-                box conv_expr(e1),
-                box nf::Expr::Let(
-                    nf::ident::Ident::fresh_name(),
-                    nf::Type::Pointer(box conv_ty(fields[&label].clone())),
-                    box nf::Expr::Assign(
-                        box nf::Expr::TupleAt(box nf::Expr::Var(tmp_var.clone()), idx),
-                        box conv_expr(e2),
-                    ),
-                    box nf::Expr::Load(box nf::Expr::Var(tmp_var)),
-                ),
-            )
+            }
+        }
+        Expr::Assign(box e1, box e2, _) => {
+            if let nf::Expr::Load(box body) = conv_expr(e1) {
+                nf::Expr::Assign(box body, box conv_expr(e2))
+            } else {
+                unreachable!()
+            }
         }
         Expr::Println(box e) => nf::Expr::PrintNum(box conv_expr(e)),
         Expr::EmptyMark => unreachable!(),
@@ -135,6 +123,9 @@ fn conv_lit(lit: Literal) -> nf::Literal {
         Literal::Record(fields) => {
             let elems = fields.into_iter().map(|(_, e)| conv_expr(e)).collect();
             nf::Literal::Tuple(elems)
+        }
+        Literal::Array(elems, typ) => {
+            nf::Literal::Array(elems.into_iter().map(conv_expr).collect(), conv_ty(typ))
         }
     }
 }
@@ -162,6 +153,7 @@ fn conv_ty(ty: Type) -> nf::Type {
         Type::Record(fields) => {
             nf::Type::Tuple(fields.into_iter().map(|(_, typ)| conv_ty(typ)).collect())
         }
+        Type::Array(box elem_typ, len) => nf::Type::Array(box conv_ty(elem_typ), len),
         Type::Var(_) | Type::EmptyMark => unreachable!(),
     }
 }

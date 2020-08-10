@@ -137,10 +137,13 @@ fn aux_expr<T>(
             label,
             pos,
         ),
-        Expr::RecordSet(box e1, typ, label, box e2, pos) => Expr::RecordSet(
+        Expr::ArrayGet(box e1, box e2, pos) => Expr::ArrayGet(
             box aux_expr(e1, name, v, ef, lf, tf),
-            aux_type(typ, name, v, ef, lf, tf),
-            label,
+            box aux_expr(e2, name, v, ef, lf, tf),
+            pos,
+        ),
+        Expr::Assign(box e1, box e2, pos) => Expr::Assign(
+            box aux_expr(e1, name, v, ef, lf, tf),
             box aux_expr(e2, name, v, ef, lf, tf),
             pos,
         ),
@@ -166,6 +169,13 @@ fn aux_literal<T>(
                 .into_iter()
                 .map(|(label, e)| (label, aux_expr(e, name, v, ef, lf, tf)))
                 .collect(),
+        ),
+        Literal::Array(elems, typ) => Literal::Array(
+            elems
+                .into_iter()
+                .map(|e| aux_expr(e, name, v, ef, lf, tf))
+                .collect(),
+            aux_type(typ, name, v, ef, lf, tf),
         ),
         _ => lit,
     }
@@ -193,6 +203,9 @@ fn aux_type<T>(
                 .map(|(label, typ)| (label, aux_type(typ, name, v, ef, lf, tf)))
                 .collect(),
         ),
+        Type::Array(box elem_typ, len) => {
+            Type::Array(box aux_type(elem_typ, name, v, ef, lf, tf), len)
+        }
         _ => typ,
     }
 }

@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 pub enum Constraint {
     Equation(Type, Type, Position),
     RecordAt(Type, Ident, Type, Position),
+    Array(Type, Type, Position),
 }
 
 pub fn solve(constraints: VecDeque<Constraint>) -> Result<Subst, Error> {
@@ -96,6 +97,20 @@ pub fn solve(constraints: VecDeque<Constraint>) -> Result<Subst, Error> {
                     return Err(Error::Other {
                         pos,
                         message: format!("`{}` cannnot be indexed with label `{}`", typ1, label),
+                    });
+                }
+            },
+            Constraint::Array(arr_typ, elem_typ, pos) => match subst.apply_type(arr_typ) {
+                Type::Array(box elem_typ_, _) => {
+                    queue.push_back(Constraint::Equation(elem_typ, elem_typ_, pos));
+                }
+                Type::Var(name) => {
+                    queue.push_back(Constraint::Array(Type::Var(name), elem_typ, pos));
+                }
+                arr_typ => {
+                    return Err(Error::Other {
+                        pos,
+                        message: format!("`{}` cannot be indexed with integer", arr_typ),
                     });
                 }
             },

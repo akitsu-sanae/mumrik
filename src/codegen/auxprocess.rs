@@ -94,6 +94,23 @@ fn lift_impl(
             );
             (f, Expr::Const(Literal::Record(fields)), appended_params)
         }
+        Expr::Const(Literal::Array(elems, typ)) => {
+            let init_f: Box<dyn Fn(Expr) -> Expr> = box |e: Expr| e;
+            let (f, elems, appended_params) = elems.into_iter().fold(
+                (init_f, Vec::new(), HashMap::new()),
+                |(acc_f, mut acc_elems, mut acc_appended_params), e| {
+                    let (f, e, appended_params) = lift_impl(e, func_names);
+                    acc_elems.push(e);
+                    acc_appended_params.extend(appended_params);
+                    (
+                        box move |e: Expr| acc_f(f(e)),
+                        acc_elems,
+                        acc_appended_params,
+                    )
+                },
+            );
+            (f, Expr::Const(Literal::Array(elems, typ)), appended_params)
+        }
         Expr::Const(Literal::Number(_))
         | Expr::Const(Literal::Bool(_))
         | Expr::Const(Literal::Char(_))
@@ -158,7 +175,7 @@ fn lift_impl(
                 appended_params,
             )
         }
-        Expr::RecordSet(box e1, typ, label, box e2, pos) => {
+        Expr::ArrayGet(box e1, box e2, pos) => {
             let (f1, e1, appended_params1) = lift_impl(e1, func_names);
             let (f2, e2, appended_params2) = lift_impl(e2, func_names);
             let mut appended_params = HashMap::new();
@@ -166,11 +183,22 @@ fn lift_impl(
             appended_params.extend(appended_params2);
             (
                 box move |e: Expr| f1(f2(e)),
-                Expr::RecordSet(box e1, typ, label, box e2, pos),
+                Expr::ArrayGet(box e1, box e2, pos),
                 appended_params,
             )
         }
-
+        Expr::Assign(box e1, box e2, pos) => {
+            let (f1, e1, appended_params1) = lift_impl(e1, func_names);
+            let (f2, e2, appended_params2) = lift_impl(e2, func_names);
+            let mut appended_params = HashMap::new();
+            appended_params.extend(appended_params1);
+            appended_params.extend(appended_params2);
+            (
+                box move |e: Expr| f1(f2(e)),
+                Expr::Assign(box e1, box e2, pos),
+                appended_params,
+            )
+        }
         Expr::Println(box e) => {
             let (f, e, appended_params) = lift_impl(e, func_names);
             (
@@ -281,14 +309,16 @@ fn fix_param_type_inner(
             label,
             pos,
         ),
-        Expr::RecordSet(box e1, typ, label, box e2, pos) => Expr::RecordSet(
+        Expr::ArrayGet(box e1, box e2, pos) => Expr::ArrayGet(
             box fix_param_type_inner(e1, func_types, appended_params),
-            typ,
-            label,
             box fix_param_type_inner(e2, func_types, appended_params),
             pos,
         ),
-
+        Expr::Assign(box e1, box e2, pos) => Expr::Assign(
+            box fix_param_type_inner(e1, func_types, appended_params),
+            box fix_param_type_inner(e2, func_types, appended_params),
+            pos,
+        ),
         Expr::Println(box e) => {
             Expr::Println(box fix_param_type_inner(e, func_types, appended_params))
         }

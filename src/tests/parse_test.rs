@@ -227,21 +227,34 @@ fn record_get() {
 }
 
 #[test]
-fn record_set() {
+fn record_assign() {
     assert_eq!(
-        program("{ {hoge=12, fuga=32} with hoge = 42 }"),
+        program("let x = {hoge=12, fuga=32}; x.hoge <- 42"),
         Ok(Program {
             imports: vec![],
-            expr: RecordSet(
+            expr: Let(
+                Ident::new("x"),
+                Type::Var(Ident::new("<fresh-expected>")),
                 box Const(Record(hashmap! {
                     Ident::new("hoge") => Const(Number(12)),
                     Ident::new("fuga") => Const(Number(32))
                 })),
-                Type::Var(Ident::new("<fresh-expected>")),
-                Ident::new("hoge"),
-                box Const(Number(42)),
-                Position { start: 0, end: 37 }
-            )
+                box Assign(
+                    box RecordGet(
+                        box Var(
+                            Ident::new("x"),
+                            Type::Var(Ident::new("<fresh-expected>")),
+                            Position { start: 28, end: 29 }
+                        ),
+                        Type::Var(Ident::new("<fresh-expected>")),
+                        Ident::new("hoge"),
+                        Position { start: 28, end: 35 }
+                    ),
+                    box Const(Number(42)),
+                    Position { start: 35, end: 38 }
+                ),
+                Position { start: 0, end: 28 }
+            ),
         })
     );
 }

@@ -2,6 +2,11 @@ use ast::*;
 use ident::Ident;
 use peg;
 
+enum RecordArrayGetExprAux {
+    RecordGet(Ident, usize),
+    ArrayGet(Expr, usize),
+}
+
 peg::parser!(grammar rules() for str {
 
 pub rule type_() -> Type
@@ -122,25 +127,42 @@ rule binop_expr() -> Expr = precedence! {
     x:(@) start:position!() STAR() end:position!() y:@ { Expr::BinOp(BinOp::Mult, box x, box y, Position {start: start, end: end}) }
     x:(@) start:position!() SLASH() end:position!() y:@ { Expr::BinOp(BinOp::Div, box x, box y, Position {start: start, end: end}) }
     --
+    x:@ start:position!() LEFT_ARROW() end:position!() y:(@) { Expr::Assign(box x, box y, Position {start: start, end: end}) }
+    --
     e:apply_expr() { e }
 }
 
 rule apply_expr() -> Expr
-    = start:position!() e1:record_get_expr() e2:apply_expr() end:position!() {
+    = start:position!() e1:record_array_get_expr() e2:apply_expr() end:position!() {
         Expr::Apply(box e1, box e2, Position {start: start, end: end})
     }
-    / record_get_expr()
+    / record_array_get_expr()
 
-rule record_get_expr() -> Expr
-    = start:position!() e:factor_expr() labels:(DOT() label:ident() end:position!() { (label, end) })* {
-        labels.into_iter().fold(e, |acc, (label, end)| Expr::RecordGet(box acc, Type::Var(Ident::fresh()), label, Position {start: start, end: end}))
+rule record_array_get_expr() -> Expr
+    = start:position!() e:factor_expr() aux:record_array_get_expr_aux()* {
+        aux.into_iter().fold(e, move |acc: Expr, aux: RecordArrayGetExprAux| {
+            match aux {
+                RecordArrayGetExprAux::RecordGet(label, end) => {
+                    Expr::RecordGet(box acc, Type::Var(Ident::fresh()), label, Position {start: start, end: end})
+                },
+                RecordArrayGetExprAux::ArrayGet(e, end) => {
+                    Expr::ArrayGet(box acc, box e, Position {start: start, end: end})
+                }
+            }
+        })
+    }
+
+rule record_array_get_expr_aux() -> RecordArrayGetExprAux
+    = DOT() label:ident() end:position!() { RecordArrayGetExprAux::RecordGet(label, end) }
+    / LEFT_SQUARE_BRACKET() e:expr() end:position!() RIGHT_SQUARE_BRACKET() {
+        RecordArrayGetExprAux::ArrayGet(e, end)
     }
 
 rule factor_expr() -> Expr
     = func_expr()
-    / record_set_expr()
     / record_expr()
     / tuple_expr()
+    / array_expr()
     / number_expr()
     / boolean_expr()
     / unit_expr()
@@ -181,12 +203,6 @@ rule func_expr() -> Expr
         }
     }
 
-
-rule record_set_expr() -> Expr
-    = start:position!() LEFT_BRACE() e1:expr() WITH() label:ident() EQUAL() e2:expr() RIGHT_BRACE() end:position!() {
-        Expr::RecordSet(box e1, Type::Var(Ident::fresh()), label, box e2, Position {start: start, end: end})
-    }
-
 rule record_expr() -> Expr
     = LEFT_BRACE() arms:(label:ident() EQUAL() e:expr() COMMA()? { (label, e) })* RIGHT_BRACE() {
         Expr::Const(Literal::Record(arms.into_iter().collect()))
@@ -199,6 +215,11 @@ rule tuple_expr() -> Expr
         } else {
             Err("length of tuple must be greater than 1")
         }
+    }
+
+rule array_expr() -> Expr
+    = LEFT_SQUARE_BRACKET() es:(e:expr() COMMA()? {e})* RIGHT_SQUARE_BRACKET() {
+        Expr::Const(Literal::Array(es, Type::Var(Ident::fresh())))
     }
 
 rule number_expr() -> Expr
@@ -278,6 +299,7 @@ rule DOUBLE_EQUAL() = "==" __
 rule NOT_EQUAL() = "/=" __
 rule ARROW() = "->" __
 rule FAT_ARROW() = "=>" __
+rule LEFT_ARROW() = "<-" __
 rule PLUS() = "+" __
 rule MINUS() = "-" __
 rule STAR() = "*" __

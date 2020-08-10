@@ -12,6 +12,13 @@ impl Expr {
                 }
                 vars
             }
+            Expr::Const(Literal::Array(ref elems, _)) => {
+                let mut vars = HashMap::new();
+                for e in elems.iter() {
+                    vars.extend(e.free_term_vars());
+                }
+                vars
+            }
             Expr::Const(_) => HashMap::new(),
             Expr::Var(ref name, ref typ, _) => {
                 let mut vars = HashMap::new();
@@ -71,7 +78,13 @@ impl Expr {
                 vars
             }
             Expr::RecordGet(box ref e, _, _, _) => e.free_term_vars(),
-            Expr::RecordSet(box ref e1, _, _, box ref e2, _) => {
+            Expr::ArrayGet(box ref e1, box ref e2, _) => {
+                let mut vars = HashMap::new();
+                vars.extend(e1.free_term_vars());
+                vars.extend(e2.free_term_vars());
+                vars
+            }
+            Expr::Assign(box ref e1, box ref e2, _) => {
                 let mut vars = HashMap::new();
                 vars.extend(e1.free_term_vars());
                 vars.extend(e2.free_term_vars());

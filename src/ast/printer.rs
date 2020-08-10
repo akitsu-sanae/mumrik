@@ -37,9 +37,8 @@ impl fmt::Display for Expr {
             }
             Expr::BinOp(ref op, box ref e1, box ref e2, _) => write!(f, "({}) {} ({})", e1, op, e2),
             Expr::RecordGet(box ref e, _, ref label, _) => write!(f, "({}).{}", e, label),
-            Expr::RecordSet(box ref e1, _, ref label, box ref e2, _) => {
-                write!(f, "{} {{ {} <- {} }}", e1, label, e2)
-            }
+            Expr::ArrayGet(box ref e1, box ref e2, _) => write!(f, "{}[{}]", e1, e2),
+            Expr::Assign(box ref e1, box ref e2, _) => write!(f, "{} <- {}", e1, e2),
             Expr::Println(box ref e) => write!(f, "println {}", e),
             Expr::EmptyMark => unreachable!(),
         }
@@ -59,6 +58,13 @@ impl fmt::Display for Literal {
                     write!(f, "{} = {},", label, e)?;
                 }
                 write!(f, "}}")
+            }
+            Literal::Array(ref elems, _) => {
+                write!(f, "[")?;
+                for e in elems {
+                    write!(f, "{}, ", e)?;
+                }
+                write!(f, "]")
             }
         }
     }
@@ -98,6 +104,7 @@ impl fmt::Display for Type {
                 }
                 write!(f, "}}")
             }
+            Type::Array(box ref elem_typ, ref size) => write!(f, "[{}; {}]", elem_typ, size),
             Type::Var(ref name) => write!(f, "{}", name),
             Type::EmptyMark => unreachable!(),
         }
